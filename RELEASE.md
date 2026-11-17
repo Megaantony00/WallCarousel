@@ -61,9 +61,16 @@ Controlla a mano su un dispositivo reale:
 ## 5. F-Droid
 
 Il metadata dell'app sta in `fastlane/metadata/android/`. Il recipe per
-`fdroiddata` è in `fdroid/com.wallcarousel.app.yml`: sostituisci
-`<commit-del-tag>` con lo SHA del commit del tag e invia una merge request a
-`https://gitlab.com/fdroid/fdroiddata`.
+`fdroiddata` è in `fdroid/com.wallcarousel.app.yml`, con lo SHA del tag
+`f1beb51bb15442114c7643df52e63bd6ad25faab`.
+
+La merge request è aperta:
+https://gitlab.com/fdroid/fdroiddata/-/merge_requests/57823
+
+Il fork è `Megaantony00/fdroiddata`, ramo `wallcarousel-1.0`. La pipeline del
+fork non parte finché l'account GitLab non completa la verifica d'identità
+(`Identity verification is required in order to run CI jobs`); nella merge
+request è lasciata una nota per i manutentori.
 
 Punti già pronti per F-Droid:
 
