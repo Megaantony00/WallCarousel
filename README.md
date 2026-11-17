@@ -1,8 +1,38 @@
-# WallCarousel
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/icon.png" width="120" alt="WallCarousel icon">
+</p>
 
-WallCarousel is a lightweight, open-source Android app that rotates wallpapers on the home and
-lock screens of a tablet. It is designed for the Samsung Galaxy Tab S10 FE+ 5G and One UI, but
-runs on any device with Android 10 (API 29) or later.
+<h1 align="center">WallCarousel</h1>
+
+<p align="center">
+  <b>Rotate home and lock wallpapers on your tablet — completely offline.</b>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Megaantony00/wallcarousel/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Megaantony00/wallcarousel?style=flat-square"></a>
+  <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue?style=flat-square"></a>
+  <img alt="Android 10+" src="https://img.shields.io/badge/Android-10%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
+</p>
+
+WallCarousel is a lightweight, open-source Android app that rotates the photos you choose on the
+home and lock screens of a tablet. It is designed for the Samsung Galaxy Tab S10 FE+ 5G and One UI,
+but runs on any device with Android 10 (API 29) or later.
+
+## Screenshots
+
+| Wallpapers | Carousel editor |
+|:---:|:---:|
+| <img src="docs/screenshots/wallpapers.jpg" width="440" alt="Wallpaper library"> | <img src="docs/screenshots/carousel-editor.jpg" width="440" alt="Carousel editor with independent schedules"> |
+| **Schedule** | **Crop and filters** |
+| <img src="docs/screenshots/schedule.jpg" width="440" alt="Independent schedule options"> | <img src="docs/screenshots/wallpaper-editor.jpg" width="440" alt="Non-destructive crop and filters"> |
+
+## Download
+
+[**Download the latest APK**](https://github.com/Megaantony00/wallcarousel/releases/latest) — signed,
+Android 10 or later.
+
+An F-Droid submission is planned. The app has no `INTERNET` permission, no ads, no analytics and no
+tracking.
 
 ## Features
 
@@ -15,7 +45,6 @@ runs on any device with Android 10 (API 29) or later.
 - Advance the wallpaper from two Quick Settings tiles, one for home and one for lock.
 - Adaptive Compose UI for tablets, Samsung DeX, split-screen and pop-up view.
 - English and Italian user interface.
-- No ads, no analytics, no tracking and no internet permission.
 
 ## Current limitations
 
@@ -33,10 +62,6 @@ runs on any device with Android 10 (API 29) or later.
   itself is fully adaptive and works in DeX.
 - Lock-screen support depends on the device manufacturer. WallCarousel uses the official
   `WallpaperManager` lock flag and reports an error if the system rejects the change.
-
-## Download
-
-The signed APK is available on the [releases page](https://github.com/Megaantony00/wallcarousel/releases).
 
 ## Build
 
