@@ -1,0 +1,19 @@
+WallCarousel keeps the home and lock screens of your tablet fresh by rotating the photos you choose.
+
+Import photos with the Android photo picker. WallCarousel copies them into its private storage, so the originals in your gallery are never modified or deleted.
+
+Features:
+- separate portrait and landscape versions of the same photo;
+- non-destructive adjustments: focal point, zoom, brightness, contrast, saturation and blur;
+- ordered carousels for the home screen and the lock screen;
+- independent scheduling per screen: an interval of 15 minutes or more, specific times of day, an advance on every unlock, or any combination of them;
+- Quick Settings tiles to advance the wallpaper manually;
+- adaptive layout for tablets, DeX, split-screen and pop-up view;
+- English and Italian interface.
+
+Privacy:
+- no internet permission, no analytics, no ads, no tracking;
+- everything is processed and stored on the device;
+- you can export a backup or delete all data at any time from the settings.
+
+WallCarousel is free software released under the GNU General Public License v3.0 or later.

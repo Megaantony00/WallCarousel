@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WallCarousel</string>
+
+    <string name="nav_wallpapers">Sfondi</string>
+    <string name="nav_carousels">Caroselli</string>
+    <string name="nav_settings">Impostazioni</string>
+
+    <string name="wallpapers_title">Sfondi</string>
+    <string name="wallpaper_default_name">Sfondo</string>
+    <string name="import_wallpapers">Importa sfondi</string>
+    <string name="library_empty_title">La libreria è vuota</string>
+    <string name="library_empty_body">Scegli le foto dalla galleria. Vengono copiate nello spazio privato dell\'app e non vengono mai caricate online.</string>
+
+    <string name="carousels_title">Caroselli</string>
+    <string name="carousels_empty_title">Nessun carosello</string>
+    <string name="carousels_empty_body">Crea un carosello, aggiungi gli sfondi e assegnalo alla schermata Home o di blocco.</string>
+    <string name="new_carousel">Nuovo carosello</string>
+    <string name="carousel_name">Nome</string>
+    <string name="create">Crea</string>
+    <string name="cancel">Annulla</string>
+    <string name="save">Salva</string>
+    <string name="delete">Elimina</string>
+    <string name="back">Indietro</string>
+
+    <string name="orientation_portrait">Verticale</string>
+    <string name="orientation_landscape">Orizzontale</string>
+    <string name="orientation_both">Verticale e orizzontale</string>
+    <string name="wallpaper_preview">Anteprima sfondo</string>
+    <string name="no_preview">Nessuna anteprima disponibile</string>
+    <string name="drag_focus_hint">Trascina l\'anteprima per scegliere il punto focale.</string>
+    <string name="zoom">Zoom</string>
+    <string name="brightness">Luminosità</string>
+    <string name="contrast">Contrasto</string>
+    <string name="saturation">Saturazione</string>
+    <string name="blur">Sfocatura</string>
+    <string name="reset_adjustments">Reimposta regolazioni</string>
+    <string name="delete_wallpaper">Elimina sfondo</string>
+    <string name="delete_wallpaper_body">Rimuove lo sfondo e le sue immagini da WallCarousel e da ogni carosello che lo usa. La foto originale nella galleria non viene toccata.</string>
+    <string name="missing_orientation_title">Nessuna versione %1$s</string>
+    <string name="missing_orientation_body">Importa una foto per questo orientamento. L\'altro orientamento resta invariato.</string>
+    <string name="add_orientation_image">Aggiungi immagine %1$s</string>
+
+    <string name="assignment_title">Assegnazioni</string>
+    <string name="home_screen">Schermata Home</string>
+    <string name="lock_screen">Schermata di blocco</string>
+    <string name="in_use">In uso</string>
+    <string name="apply_now">Applica ora</string>
+    <string name="schedule">Pianificazione</string>
+    <string name="use_for_home">Usa per Home</string>
+    <string name="use_for_lock">Usa per il blocco</string>
+    <string name="schedule_title">Pianificazione · %1$s</string>
+    <string name="schedule_manual">Manuale</string>
+    <string name="schedule_interval">Ogni pochi minuti</string>
+    <string name="schedule_daily">A orari specifici</string>
+    <string name="schedule_daily_summary">Alle %1$s</string>
+    <string name="schedule_wake">A ogni sblocco</string>
+    <string name="schedule_wake_summary">A ogni sblocco</string>
+    <string name="schedule_wake_hint">Avanza ogni volta che sblocchi il tablet dopo lo standby. Finché l\'opzione è attiva resta visibile una notifica silenziosa.</string>
+    <string name="wake_channel_name">Rotazione all\'accensione</string>
+    <string name="wake_channel_description">Mantiene attivo l\'ascolto dello sblocco finché l\'opzione è attiva.</string>
+    <string name="wake_notification_title">WallCarousel</string>
+    <string name="wake_notification_text">Avanza gli sfondi quando sblocchi il tablet</string>
+    <string name="add_time">Aggiungi orario</string>
+    <string name="no_times">Aggiungi almeno un orario.</string>
+    <string name="carousel_empty_hint">Aggiungi sfondi al carosello prima di assegnarlo.</string>
+    <string name="add">Aggiungi</string>
+    <string name="move_up">Sposta su</string>
+    <string name="move_down">Sposta giù</string>
+    <string name="remove">Rimuovi</string>
+    <string name="choose_wallpapers">Scegli sfondi</string>
+    <string name="all_wallpapers_added">Tutti i tuoi sfondi sono già in questo carosello.</string>
+    <string name="delete_carousel">Elimina carosello</string>
+    <string name="delete_carousel_body">Il carosello viene rimosso. Gli sfondi restano nella libreria e la pianificazione che lo usa viene cancellata.</string>
+
+    <string name="settings_title">Impostazioni</string>
+    <string name="appearance">Aspetto</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="dynamic_color">Colori dinamici</string>
+    <string name="dynamic_color_summary">Usa i colori dello sfondo su Android 12 e versioni successive.</string>
+    <string name="data">Dati</string>
+    <string name="export_data">Esporta dati</string>
+    <string name="export_data_summary">Crea un file zip con i metadati e le immagini originali. Salvalo dove preferisci.</string>
+    <string name="delete_all">Elimina tutti i dati</string>
+    <string name="delete_all_summary">Rimuove ogni sfondo, carosello, pianificazione e impostazione salvata da WallCarousel.</string>
+    <string name="delete_all_body">L\'operazione non può essere annullata. Le foto nella galleria non vengono toccate. Lo sfondo attualmente impostato sul dispositivo non viene modificato.</string>
+    <string name="about">Informazioni</string>
+    <string name="version_label">Versione %1$s</string>
+    <string name="license_label">Licenza</string>
+    <string name="license_value">GNU General Public License v3.0 o successiva</string>
+    <string name="privacy_title">Privacy</string>
+    <string name="privacy_body">WallCarousel funziona completamente offline: non ha il permesso internet, non usa analytics e non mostra pubblicità. Le foto importate vengono copiate nello spazio privato dell\'app, protetto dalla cifratura dei file di Android. Nulla viene inviato all\'esterno. Puoi esportare o eliminare tutto in qualsiasi momento da questa schermata. Per cambiare lo sfondo viene usata solo l\'API di sistema.</string>
+    <string name="no_network_note">Questa app non richiede il permesso di rete.</string>
+
+    <string name="import_failed">Impossibile importare le immagini selezionate.</string>
+    <string name="apply_home_success">Sfondo Home aggiornato.</string>
+    <string name="apply_lock_success">Sfondo di blocco aggiornato.</string>
+    <string name="apply_failed">Impossibile cambiare lo sfondo.</string>
+    <string name="apply_unavailable">Assegna prima un carosello con almeno uno sfondo.</string>
+    <string name="wallpaper_not_supported">Il cambio sfondo non è consentito su questo dispositivo.</string>
+    <string name="export_success">Dati esportati.</string>
+    <string name="export_failed">Impossibile esportare i dati.</string>
+    <string name="data_deleted">Tutti i dati di WallCarousel sono stati eliminati.</string>
+
+    <string name="tile_home_label">Sfondo Home successivo</string>
+    <string name="tile_lock_label">Sfondo blocco successivo</string>
+    <string name="tile_applied">Sfondo cambiato.</string>
+    <string name="tile_assign_first">Assegna prima un carosello.</string>
+    <string name="tile_not_supported">Cambio sfondo non consentito.</string>
+
+    <plurals name="wallpapers_count">
+        <item quantity="one">%d sfondo</item>
+        <item quantity="many">%d di sfondi</item>
+        <item quantity="other">%d sfondi</item>
+    </plurals>
+    <plurals name="carousels_count">
+        <item quantity="one">%d carosello</item>
+        <item quantity="many">%d di caroselli</item>
+        <item quantity="other">%d caroselli</item>
+    </plurals>
+    <plurals name="wallpapers_in_carousel">
+        <item quantity="one">%d sfondo</item>
+        <item quantity="many">%d di sfondi</item>
+        <item quantity="other">%d sfondi</item>
+    </plurals>
+    <plurals name="imported_count">
+        <item quantity="one">%d sfondo importato</item>
+        <item quantity="many">%d di sfondi importati</item>
+        <item quantity="other">%d sfondi importati</item>
+    </plurals>
+    <plurals name="storage_summary">
+        <item quantity="one">%1$d sfondo · %2$s</item>
+        <item quantity="many">%1$d di sfondi · %2$s</item>
+        <item quantity="other">%1$d sfondi · %2$s</item>
+    </plurals>
+    <plurals name="schedule_interval_minutes_summary">
+        <item quantity="one">Ogni %d min</item>
+        <item quantity="many">Ogni %d min</item>
+        <item quantity="other">Ogni %d min</item>
+    </plurals>
+    <plurals name="schedule_interval_hours_summary">
+        <item quantity="one">Ogni ora</item>
+        <item quantity="many">Ogni %d ore</item>
+        <item quantity="other">Ogni %d ore</item>
+    </plurals>
+</resources>

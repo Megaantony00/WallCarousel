@@ -1,0 +1,36 @@
+# Recipe di esempio per fdroiddata.
+# Prima dell'invio sostituisci <utente-github> e <commit-del-tag> e verifica il
+# risultato con: fdroid lint com.wallcarousel.app && fdroid build com.wallcarousel.app
+Categories:
+  - Theming
+License: GPL-3.0-or-later
+AuthorName: The WallCarousel contributors
+SourceCode: https://github.com/<utente-github>/wallcarousel
+IssueTracker: https://github.com/<utente-github>/wallcarousel/issues
+WebSite: https://github.com/<utente-github>/wallcarousel
+
+AutoName: WallCarousel
+Summary: Rotate home and lock wallpapers offline
+Description: |
+  WallCarousel rotates the photos you choose on the home and lock screens of
+  your tablet. Photos are imported with the Android photo picker and copied
+  into app-private storage, so the originals are never modified.
+
+  Each screen can have its own carousel and its own schedule: an interval,
+  specific times of day, an advance on every unlock, or any combination. The
+  app has no internet permission, no analytics and no ads.
+
+RepoType: git
+Repo: https://github.com/<utente-github>/wallcarousel.git
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    commit: <commit-del-tag>
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: '1.0'
+CurrentVersionCode: 1

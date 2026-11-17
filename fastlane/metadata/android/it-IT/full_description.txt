@@ -1,0 +1,19 @@
+WallCarousel rinnova la schermata Home e la schermata di blocco del tablet ruotando le foto che scegli tu.
+
+Le foto si importano con il selettore di Android. WallCarousel le copia nello spazio privato dell'app, quindi gli originali nella galleria non vengono mai modificati né cancellati.
+
+Funzioni:
+- versione verticale e orizzontale della stessa foto;
+- ritocchi non distruttivi: punto focale, zoom, luminosità, contrasto, saturazione e sfocatura;
+- caroselli ordinati per la schermata Home e per quella di blocco;
+- pianificazione indipendente per ogni schermata: un intervallo da 15 minuti in su, orari specifici, avanzamento a ogni sblocco o qualsiasi combinazione;
+- riquadri nelle Impostazioni rapide per cambiare sfondo a mano;
+- layout adattivo per tablet, DeX, schermo diviso e pop-up;
+- interfaccia in inglese e italiano.
+
+Privacy:
+- nessun permesso internet, nessun analytics, nessuna pubblicità, nessun tracciamento;
+- tutto viene elaborato e salvato sul dispositivo;
+- puoi esportare un backup o cancellare tutti i dati dalle impostazioni.
+
+WallCarousel è software libero distribuito con GNU General Public License v3.0 o successiva.
