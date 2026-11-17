@@ -1,13 +1,13 @@
 # Recipe di esempio per fdroiddata.
-# Prima dell'invio sostituisci <utente-github> e <commit-del-tag> e verifica il
-# risultato con: fdroid lint com.wallcarousel.app && fdroid build com.wallcarousel.app
+# Prima dell'invio sostituisci <commit-del-tag> e verifica il risultato con:
+# fdroid lint com.wallcarousel.app && fdroid build com.wallcarousel.app
 Categories:
   - Theming
 License: GPL-3.0-or-later
 AuthorName: The WallCarousel contributors
-SourceCode: https://github.com/<utente-github>/wallcarousel
-IssueTracker: https://github.com/<utente-github>/wallcarousel/issues
-WebSite: https://github.com/<utente-github>/wallcarousel
+SourceCode: https://github.com/Megaantony00/wallcarousel
+IssueTracker: https://github.com/Megaantony00/wallcarousel/issues
+WebSite: https://github.com/Megaantony00/wallcarousel
 
 AutoName: WallCarousel
 Summary: Rotate home and lock wallpapers offline
@@ -21,7 +21,7 @@ Description: |
   app has no internet permission, no analytics and no ads.
 
 RepoType: git
-Repo: https://github.com/<utente-github>/wallcarousel.git
+Repo: https://github.com/Megaantony00/wallcarousel.git
 
 Builds:
   - versionName: '1.0'

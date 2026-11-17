@@ -34,6 +34,10 @@ runs on any device with Android 10 (API 29) or later.
 - Lock-screen support depends on the device manufacturer. WallCarousel uses the official
   `WallpaperManager` lock flag and reports an error if the system rejects the change.
 
+## Download
+
+The signed APK is available on the [releases page](https://github.com/Megaantony00/wallcarousel/releases).
+
 ## Build
 
 Requirements:
