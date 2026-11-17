@@ -1,6 +1,5 @@
-# Recipe di esempio per fdroiddata.
-# Prima dell'invio sostituisci <commit-del-tag> e verifica il risultato con:
-# fdroid lint com.wallcarousel.app && fdroid build com.wallcarousel.app
+# Recipe per fdroiddata (già compilata per la 1.0).
+# Verifica con: fdroid lint com.wallcarousel.app && fdroid build com.wallcarousel.app
 Categories:
   - Theming
 License: GPL-3.0-or-later
@@ -26,7 +25,7 @@ Repo: https://github.com/Megaantony00/wallcarousel.git
 Builds:
   - versionName: '1.0'
     versionCode: 1
-    commit: <commit-del-tag>
+    commit: f1beb51bb15442114c7643df52e63bd6ad25faab
     gradle:
       - yes
 
