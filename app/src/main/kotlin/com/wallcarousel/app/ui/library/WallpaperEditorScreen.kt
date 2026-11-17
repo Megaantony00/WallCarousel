@@ -423,9 +423,18 @@ private fun WallpaperPreview(
 
         val bitmap = source
         if (bitmap != null) {
-          var liveFocalX by remember(variant.focalX) { mutableFloatStateOf(variant.focalX) }
-          var liveFocalY by remember(variant.focalY) { mutableFloatStateOf(variant.focalY) }
-          var liveZoom by remember(variant.zoom) { mutableFloatStateOf(variant.zoom) }
+          // Keep these state objects stable across recompositions. Recreating
+          // them after a save would leave the pointer-input coroutine writing
+          // to the old objects, which made every gesture after the first one
+          // update an invisible state.
+          var liveFocalX by remember(file) { mutableFloatStateOf(variant.focalX) }
+          var liveFocalY by remember(file) { mutableFloatStateOf(variant.focalY) }
+          var liveZoom by remember(file) { mutableFloatStateOf(variant.zoom) }
+          LaunchedEffect(variant.focalX, variant.focalY, variant.zoom) {
+            liveFocalX = variant.focalX
+            liveFocalY = variant.focalY
+            liveZoom = variant.zoom
+          }
           val latestEnd = rememberUpdatedState(onTransformEnd)
           val colorFilter = remember(variant.brightness, variant.contrast, variant.saturation) {
             WallpaperRenderer.colorFilter(variant)

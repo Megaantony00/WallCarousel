@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
@@ -74,6 +75,13 @@ fun LibraryScreen(state: AppState, viewModel: AppViewModel) {
   val launchPicker = {
     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
   }
+  val carouselsByWallpaper = buildMap<String, MutableList<String>> {
+    state.carousels.forEach { carousel ->
+      carousel.wallpaperIds.forEach { wallpaperId ->
+        getOrPut(wallpaperId) { mutableListOf() }.add(carousel.name)
+      }
+    }
+  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -110,6 +118,7 @@ fun LibraryScreen(state: AppState, viewModel: AppViewModel) {
           items(items = state.wallpapers, key = { it.id }) { wallpaper ->
             WallpaperCard(
               wallpaper = wallpaper,
+              carouselNames = carouselsByWallpaper[wallpaper.id].orEmpty(),
               imageFile = viewModel::imageFile,
               onClick = { selectedId = wallpaper.id },
             )
@@ -132,60 +141,83 @@ fun LibraryScreen(state: AppState, viewModel: AppViewModel) {
 @Composable
 private fun WallpaperCard(
   wallpaper: Wallpaper,
+  carouselNames: List<String>,
   imageFile: (String) -> java.io.File,
   onClick: () -> Unit,
 ) {
+  val variant = wallpaper.previewVariant()
+  val resolution = variant?.let { "${it.width}×${it.height}" }
+  val carouselLabel = when {
+    carouselNames.isEmpty() -> stringResource(R.string.wallpaper_not_in_carousel)
+    carouselNames.size == 1 -> carouselNames.first()
+    else -> stringResource(
+      R.string.wallpaper_carousel_more,
+      carouselNames.first(),
+      carouselNames.size - 1,
+    )
+  }
+
   Card(onClick = onClick) {
-    Column {
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .aspectRatio(4f / 3f)
-          .background(MaterialTheme.colorScheme.surfaceVariant),
-      ) {
-        val variant = wallpaper.previewVariant()
-        val bitmap = rememberThumbnail(
-          file = variant?.let { imageFile(it.fileName) },
-          maxSize = 480,
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(4f / 3f)
+        .background(MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+      val bitmap = rememberThumbnail(
+        file = variant?.let { imageFile(it.fileName) },
+        maxSize = 480,
+      )
+      if (bitmap != null) {
+        Image(
+          bitmap = bitmap.asImageBitmap(),
+          contentDescription = wallpaper.name,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize(),
         )
-        if (bitmap != null) {
-          Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = wallpaper.name,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+      }
+      Row(
+        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        if (wallpaper.portrait != null) {
+          OrientationBadge(
+            text = "P",
+            description = stringResource(R.string.orientation_portrait),
           )
         }
-        Row(
-          modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-          horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-          if (wallpaper.portrait != null) {
-            OrientationBadge(
-              text = "P",
-              description = stringResource(R.string.orientation_portrait),
-            )
-          }
-          if (wallpaper.landscape != null) {
-            OrientationBadge(
-              text = "L",
-              description = stringResource(R.string.orientation_landscape),
-            )
-          }
+        if (wallpaper.landscape != null) {
+          OrientationBadge(
+            text = "L",
+            description = stringResource(R.string.orientation_landscape),
+          )
         }
       }
-      Column(modifier = Modifier.padding(12.dp)) {
+      Row(
+        modifier = Modifier
+          .align(Alignment.BottomStart)
+          .fillMaxWidth()
+          .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f))
+          .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
         Text(
-          text = wallpaper.name,
-          style = MaterialTheme.typography.titleMedium,
+          text = carouselLabel,
+          color = Color.White,
+          style = MaterialTheme.typography.labelMedium,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f),
         )
-        Text(
-          text = orientationSummary(wallpaper),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (resolution != null) {
+          Text(
+            text = resolution,
+            color = Color.White.copy(alpha = 0.8f),
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+          )
+        }
       }
     }
   }
@@ -195,7 +227,7 @@ private fun WallpaperCard(
 private fun OrientationBadge(text: String, description: String) {
   Surface(
     color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+    contentColor = Color.White,
     shape = MaterialTheme.shapes.small,
     modifier = Modifier.clearAndSetSemantics { contentDescription = description },
   ) {
@@ -205,11 +237,4 @@ private fun OrientationBadge(text: String, description: String) {
       modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
     )
   }
-}
-
-@Composable
-private fun orientationSummary(wallpaper: Wallpaper): String = when {
-  wallpaper.portrait != null && wallpaper.landscape != null -> stringResource(R.string.orientation_both)
-  wallpaper.portrait != null -> stringResource(R.string.orientation_portrait)
-  else -> stringResource(R.string.orientation_landscape)
 }

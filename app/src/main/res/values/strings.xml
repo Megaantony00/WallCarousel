@@ -26,6 +26,8 @@
     <string name="orientation_portrait">Portrait</string>
     <string name="orientation_landscape">Landscape</string>
     <string name="orientation_both">Portrait and landscape</string>
+    <string name="wallpaper_not_in_carousel">Not in a carousel</string>
+    <string name="wallpaper_carousel_more">%1$s +%2$d</string>
     <string name="wallpaper_preview">Wallpaper preview</string>
     <string name="no_preview">No preview available</string>
     <string name="drag_focus_hint">Drag with one finger to move, pinch with two to zoom. The grid is only a preview aid.</string>
