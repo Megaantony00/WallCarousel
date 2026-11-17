@@ -2,13 +2,22 @@
 package com.wallcarousel.app.ui.library
 
 import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculateCentroidSize
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,17 +40,20 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -48,28 +61,37 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
+import com.wallcarousel.app.data.model.CropMath
 import com.wallcarousel.app.data.model.Orientation
 import com.wallcarousel.app.data.model.Variant
 import com.wallcarousel.app.data.model.Wallpaper
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
+import com.wallcarousel.app.wallpaper.ThumbnailLoader
 import com.wallcarousel.app.wallpaper.WallpaperRenderer
 import java.io.File
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 
 @Composable
 fun WallpaperEditorScreen(
@@ -89,6 +111,7 @@ fun WallpaperEditorScreen(
   }
 
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
+  var showGrid by rememberSaveable(wallpaper.id) { mutableStateOf(false) }
   val addLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.PickVisualMedia(),
   ) { uri ->
@@ -99,15 +122,13 @@ fun WallpaperEditorScreen(
   }
 
   val save: () -> Unit = { draft?.let { viewModel.updateVariant(wallpaper.id, orientation, it) } }
-  val onFocalDelta: (Float, Float) -> Unit = { dx, dy ->
-    draft = draft?.let {
-      it.copy(
-        focalX = (it.focalX + dx).coerceIn(0f, 1f),
-        focalY = (it.focalY + dy).coerceIn(0f, 1f),
-      )
+  val onTransformEnd: (Float, Float, Float) -> Unit = { focalX, focalY, zoom ->
+    draft?.let { current ->
+      val updated = current.copy(focalX = focalX, focalY = focalY, zoom = zoom)
+      draft = updated
+      viewModel.updateVariant(wallpaper.id, orientation, updated)
     }
   }
-  val onDragEnd: () -> Unit = { draft?.let { viewModel.updateVariant(wallpaper.id, orientation, it) } }
 
   BackHandler(onBack = onBack)
 
@@ -145,8 +166,9 @@ fun WallpaperEditorScreen(
             file = previewFile,
             variant = draft,
             aspectRatio = aspect,
-            onFocalDelta = onFocalDelta,
-            onDragEnd = onDragEnd,
+            showGrid = showGrid,
+            onToggleGrid = { showGrid = !showGrid },
+            onTransformEnd = onTransformEnd,
             modifier = Modifier.weight(1f).fillMaxHeight(),
           )
           Column(
@@ -178,8 +200,9 @@ fun WallpaperEditorScreen(
             file = previewFile,
             variant = draft,
             aspectRatio = aspect,
-            onFocalDelta = onFocalDelta,
-            onDragEnd = onDragEnd,
+            showGrid = showGrid,
+            onToggleGrid = { showGrid = !showGrid },
+            onTransformEnd = onTransformEnd,
             modifier = Modifier.fillMaxWidth(),
           )
           EditorControls(
@@ -364,13 +387,16 @@ private fun AdjustmentSlider(
   }
 }
 
+private const val PREVIEW_MAX_SIZE = 2048
+
 @Composable
 private fun WallpaperPreview(
   file: File?,
   variant: Variant?,
   aspectRatio: Float,
-  onFocalDelta: (Float, Float) -> Unit,
-  onDragEnd: () -> Unit,
+  showGrid: Boolean,
+  onToggleGrid: () -> Unit,
+  onTransformEnd: (Float, Float, Float) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -378,7 +404,7 @@ private fun WallpaperPreview(
     val previewWidth = minOf(maxWidth, maxPreviewWidth)
     val density = LocalDensity.current
     val widthPx = with(density) { previewWidth.roundToPx() }.coerceAtLeast(1)
-    val renderWidth = widthPx.coerceAtMost(900)
+    val previewDescription = stringResource(R.string.wallpaper_preview)
 
     Box(
       modifier = Modifier
@@ -388,43 +414,158 @@ private fun WallpaperPreview(
         .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
       if (file != null && variant != null) {
-        var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-        LaunchedEffect(file, variant, renderWidth, aspectRatio) {
-          delay(100)
-          bitmap = withContext(Dispatchers.Default) {
-            WallpaperRenderer.render(
-              file = file,
-              variant = variant,
-              targetWidth = renderWidth,
-              targetHeight = (renderWidth / aspectRatio).roundToInt().coerceAtLeast(1),
-            )
-          }
-        }
-        val rendered = bitmap
-        if (rendered != null) {
-          Image(
-            bitmap = rendered.asImageBitmap(),
-            contentDescription = stringResource(R.string.wallpaper_preview),
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-          )
+        var source by remember(file) { mutableStateOf<Bitmap?>(null) }
+        var loaded by remember(file) { mutableStateOf(false) }
+        LaunchedEffect(file) {
+          source = ThumbnailLoader.load(file, PREVIEW_MAX_SIZE)
+          loaded = true
         }
 
-        val latestDelta by rememberUpdatedState(onFocalDelta)
-        val latestEnd by rememberUpdatedState(onDragEnd)
-        Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(file, aspectRatio) {
-              detectDragGestures(
-                onDragEnd = { latestEnd() },
-                onDrag = { change, dragAmount ->
-                  change.consume()
-                  latestDelta(-dragAmount.x / size.width, -dragAmount.y / size.height)
-                },
-              )
-            },
-        )
+        val bitmap = source
+        if (bitmap != null) {
+          var liveFocalX by remember(variant.focalX) { mutableFloatStateOf(variant.focalX) }
+          var liveFocalY by remember(variant.focalY) { mutableFloatStateOf(variant.focalY) }
+          var liveZoom by remember(variant.zoom) { mutableFloatStateOf(variant.zoom) }
+          val latestEnd = rememberUpdatedState(onTransformEnd)
+          val colorFilter = remember(variant.brightness, variant.contrast, variant.saturation) {
+            WallpaperRenderer.colorFilter(variant)
+          }
+          val paint = remember { Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG) }
+          val blurRadius = with(density) {
+            (variant.blur * widthPx / 1080f).toDp()
+          }
+          val imageModifier = if (
+            variant.blur > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+          ) {
+            Modifier.blur(blurRadius)
+          } else {
+            Modifier
+          }
+
+          Box(
+            modifier = Modifier
+              .fillMaxSize()
+              .semantics { contentDescription = previewDescription }
+              .pointerInput(bitmap, aspectRatio) {
+                awaitEachGesture {
+                  if (size.width <= 0 || size.height <= 0) return@awaitEachGesture
+                  var pastTouchSlop = false
+                  var accumulatedZoom = 1f
+                  var accumulatedPan = Offset.Zero
+                  val touchSlop = viewConfiguration.touchSlop
+
+                  awaitFirstDown(requireUnconsumed = false)
+                  do {
+                    val event = awaitPointerEvent()
+                    val canceled = event.changes.any { it.isConsumed }
+                    if (!canceled) {
+                      val zoomChange = event.calculateZoom()
+                      val panChange = event.calculatePan()
+                      if (!pastTouchSlop) {
+                        accumulatedZoom *= zoomChange
+                        accumulatedPan += panChange
+                        val centroidSize = event.calculateCentroidSize(useCurrent = false)
+                        val zoomMotion = abs(1f - accumulatedZoom) * centroidSize
+                        val panMotion = accumulatedPan.getDistance()
+                        if (zoomMotion > touchSlop || panMotion > touchSlop) {
+                          pastTouchSlop = true
+                        }
+                      }
+                      if (pastTouchSlop) {
+                        if (zoomChange != 1f || panChange != Offset.Zero) {
+                          val centroid = event.calculateCentroid(useCurrent = false)
+                          val result = CropMath.transform(
+                            sourceWidth = bitmap.width,
+                            sourceHeight = bitmap.height,
+                            targetAspect = aspectRatio,
+                            focalX = liveFocalX,
+                            focalY = liveFocalY,
+                            zoom = liveZoom,
+                            centroidX = centroid.x / size.width,
+                            centroidY = centroid.y / size.height,
+                            panXFraction = panChange.x / size.width,
+                            panYFraction = panChange.y / size.height,
+                            zoomChange = zoomChange,
+                          )
+                          liveFocalX = result.focalX
+                          liveFocalY = result.focalY
+                          liveZoom = result.zoom
+                        }
+                        event.changes.forEach { change ->
+                          if (change.positionChanged()) change.consume()
+                        }
+                      }
+                    }
+                  } while (!canceled && event.changes.any { it.pressed })
+
+                  if (pastTouchSlop) {
+                    latestEnd.value(liveFocalX, liveFocalY, liveZoom)
+                  }
+                }
+              },
+          ) {
+            Box(modifier = Modifier.fillMaxSize().then(imageModifier)) {
+              Canvas(modifier = Modifier.fillMaxSize()) {
+                val crop = CropMath.cropRect(
+                  sourceWidth = bitmap.width,
+                  sourceHeight = bitmap.height,
+                  targetAspect = aspectRatio,
+                  focalX = liveFocalX,
+                  focalY = liveFocalY,
+                  zoom = liveZoom,
+                )
+                val left = crop.left.roundToInt().coerceIn(0, bitmap.width - 1)
+                val top = crop.top.roundToInt().coerceIn(0, bitmap.height - 1)
+                val right = crop.right.roundToInt().coerceIn(left + 1, bitmap.width)
+                val bottom = crop.bottom.roundToInt().coerceIn(top + 1, bitmap.height)
+                paint.colorFilter = colorFilter
+                drawIntoCanvas { canvas ->
+                  canvas.nativeCanvas.drawBitmap(
+                    bitmap,
+                    Rect(left, top, right, bottom),
+                    RectF(0f, 0f, size.width, size.height),
+                    paint,
+                  )
+                }
+              }
+            }
+          }
+
+          if (showGrid) {
+            GridOverlay(modifier = Modifier.fillMaxSize())
+          }
+
+          FilledTonalIconButton(
+            onClick = onToggleGrid,
+            modifier = Modifier
+              .align(Alignment.TopEnd)
+              .padding(12.dp)
+              .size(48.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+              containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+              contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+          ) {
+            Icon(
+              imageVector = GridIcon,
+              contentDescription = stringResource(
+                if (showGrid) R.string.hide_grid else R.string.show_grid,
+              ),
+            )
+          }
+        } else if (loaded) {
+          Text(
+            text = stringResource(R.string.no_preview),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.Center),
+          )
+        } else {
+          CircularProgressIndicator(
+            modifier = Modifier.align(Alignment.Center).size(32.dp),
+            strokeWidth = 3.dp,
+          )
+        }
       } else {
         Text(
           text = stringResource(R.string.no_preview),
@@ -435,6 +576,71 @@ private fun WallpaperPreview(
       }
     }
   }
+}
+
+@Composable
+private fun GridOverlay(modifier: Modifier = Modifier) {
+  Canvas(modifier = modifier) {
+    val line = 1.dp.toPx()
+    for (index in 1..2) {
+      val x = size.width * index / 3f
+      drawLine(
+        color = Color.Black.copy(alpha = 0.35f),
+        start = Offset(x, 0f),
+        end = Offset(x, size.height),
+        strokeWidth = line * 3f,
+      )
+      drawLine(
+        color = Color.White.copy(alpha = 0.85f),
+        start = Offset(x, 0f),
+        end = Offset(x, size.height),
+        strokeWidth = line,
+      )
+      val y = size.height * index / 3f
+      drawLine(
+        color = Color.Black.copy(alpha = 0.35f),
+        start = Offset(0f, y),
+        end = Offset(size.width, y),
+        strokeWidth = line * 3f,
+      )
+      drawLine(
+        color = Color.White.copy(alpha = 0.85f),
+        start = Offset(0f, y),
+        end = Offset(size.width, y),
+        strokeWidth = line,
+      )
+    }
+  }
+}
+
+private val GridIcon: ImageVector by lazy {
+  ImageVector.Builder(
+    name = "Grid3x3",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+  ).apply {
+    path(
+      fill = null,
+      stroke = SolidColor(Color.Black),
+      strokeLineWidth = 1.6f,
+    ) {
+      moveTo(3f, 3f)
+      lineTo(21f, 3f)
+      lineTo(21f, 21f)
+      lineTo(3f, 21f)
+      close()
+      moveTo(9f, 3f)
+      lineTo(9f, 21f)
+      moveTo(15f, 3f)
+      lineTo(15f, 21f)
+      moveTo(3f, 9f)
+      lineTo(21f, 9f)
+      moveTo(3f, 15f)
+      lineTo(21f, 15f)
+    }
+  }.build()
 }
 
 private fun orientationLabel(orientation: Orientation): Int = when (orientation) {

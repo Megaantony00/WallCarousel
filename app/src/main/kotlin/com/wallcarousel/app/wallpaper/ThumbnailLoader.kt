@@ -30,7 +30,9 @@ object ThumbnailLoader {
         decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
         val longest = maxOf(info.size.width, info.size.height)
         if (longest > maxSize) {
-          decoder.setTargetSampleSize(maxOf(1, longest / maxSize))
+          // Round up so the decoded bitmap never exceeds maxSize.
+          val sample = (longest + maxSize - 1) / maxSize
+          decoder.setTargetSampleSize(maxOf(1, sample))
         }
       }
     }.getOrNull()

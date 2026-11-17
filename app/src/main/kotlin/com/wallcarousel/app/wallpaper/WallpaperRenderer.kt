@@ -93,7 +93,7 @@ object WallpaperRenderer {
     }
   }
 
-  private fun colorFilter(variant: Variant): ColorFilter? {
+  internal fun colorFilter(variant: Variant): ColorFilter? {
     val saturation = variant.saturation.coerceIn(0f, 2f)
     val contrast = variant.contrast.coerceIn(0.5f, 1.5f)
     val brightness = variant.brightness.coerceIn(-0.5f, 0.5f)

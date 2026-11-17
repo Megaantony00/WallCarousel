@@ -28,7 +28,9 @@
     <string name="orientation_both">Portrait and landscape</string>
     <string name="wallpaper_preview">Wallpaper preview</string>
     <string name="no_preview">No preview available</string>
-    <string name="drag_focus_hint">Drag the preview to choose the focus point.</string>
+    <string name="drag_focus_hint">Drag with one finger to move, pinch with two to zoom. The grid is only a preview aid.</string>
+    <string name="show_grid">Show grid</string>
+    <string name="hide_grid">Hide grid</string>
     <string name="zoom">Zoom</string>
     <string name="brightness">Brightness</string>
     <string name="contrast">Contrast</string>
