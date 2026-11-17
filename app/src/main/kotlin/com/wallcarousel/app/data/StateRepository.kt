@@ -2,9 +2,13 @@
 package com.wallcarousel.app.data
 
 import android.content.Context
+import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,10 +85,12 @@ class StateRepository(context: Context) {
       val root = json.parseToJsonElement(text).jsonObject
       val version = root["schemaVersion"]?.jsonPrimitive?.intOrNull ?: 1
       val payload = if (version < SCHEMA_VERSION) migrateToCurrent(root) else root
-      json.decodeFromJsonElement<AppState>(payload).also { state ->
-        // Persist the migrated form once, so the next launch reads the new
-        // schema directly.
-        if (version < SCHEMA_VERSION) persist(state)
+      json.decodeFromJsonElement<AppState>(payload).let { decoded ->
+        val normalized = normalizeWallpapers(decoded)
+        // Persist the migrated or normalized form once, so the next launch
+        // reads the final data directly.
+        if (version < SCHEMA_VERSION || normalized != decoded) persist(normalized)
+        normalized
       }
     }.getOrElse { error ->
       if (error is SerializationException) {
@@ -132,6 +138,60 @@ class StateRepository(context: Context) {
       }
     }
     put("schedule", schedule)
+  }
+
+  /**
+   * Older imports all shared the localized default name ("Sfondo", "Sfondo
+   * (2)", ...) and had only one orientation. Give them a readable source name,
+   * keep the wallpaper name free for a user-chosen name, and seed the missing
+   * orientation with the same image.
+   */
+  private fun normalizeWallpapers(state: AppState): AppState {
+    val defaultName = appContext.getString(R.string.wallpaper_default_name)
+    val numberedDefault = Regex("^${Regex.escape(defaultName)} \\(\\d+\\)$")
+    val usedSourceNames = mutableSetOf<String>()
+    var changed = false
+    val wallpapers = state.wallpapers.map { wallpaper ->
+      var current = wallpaper
+      if (current.portrait == null && current.landscape != null) {
+        current = current.copy(portrait = current.landscape)
+        changed = true
+      }
+      if (current.landscape == null && current.portrait != null) {
+        current = current.copy(landscape = current.portrait)
+        changed = true
+      }
+      val legacyNames = current.sourceName.isBlank()
+      val baseSourceName = if (legacyNames) {
+        if (current.importedAt > 0) {
+          SimpleDateFormat("d MMM yyyy HH.mm", Locale.getDefault())
+            .format(Date(current.importedAt))
+        } else {
+          current.name.ifBlank { defaultName }
+        }
+      } else {
+        current.sourceName
+      }
+      val uniqueSourceName = uniqueName(baseSourceName, usedSourceNames)
+      if (uniqueSourceName != current.sourceName) {
+        current = current.copy(sourceName = uniqueSourceName)
+        changed = true
+      }
+      if (legacyNames && (current.name == defaultName || numberedDefault.matches(current.name))) {
+        current = current.copy(name = "")
+        changed = true
+      }
+      current
+    }
+    return if (changed) state.copy(wallpapers = wallpapers) else state
+  }
+
+  private fun uniqueName(base: String, used: MutableSet<String>): String {
+    val clean = base.trim().ifBlank { "Wallpaper" }
+    if (used.add(clean)) return clean
+    var index = 2
+    while (!used.add("$clean ($index)")) index++
+    return "$clean ($index)"
   }
 
   private fun persist(state: AppState) {

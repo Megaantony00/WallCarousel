@@ -20,6 +20,12 @@
     <string name="create">Create</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <string name="wallpaper_name_label">Name</string>
+    <string name="rename_wallpaper">Rename wallpaper</string>
+    <string name="wallpaper_source_name">Suggested name: %1$s</string>
+    <string name="unsaved_changes_title">Unsaved changes</string>
+    <string name="unsaved_changes_body">Save your changes before continuing?</string>
+    <string name="discard_changes">Discard changes</string>
     <string name="delete">Delete</string>
     <string name="back">Back</string>
 
@@ -136,11 +142,16 @@
         <item quantity="other">%1$d wallpapers · %2$s</item>
     </plurals>
     <plurals name="schedule_interval_minutes_summary">
-        <item quantity="one">Every %d min</item>
-        <item quantity="other">Every %d min</item>
+        <item quantity="one">Every minute</item>
+        <item quantity="other">Every %d minutes</item>
     </plurals>
     <plurals name="schedule_interval_hours_summary">
         <item quantity="one">Every hour</item>
         <item quantity="other">Every %d hours</item>
     </plurals>
+    <plurals name="schedule_interval_minutes_part">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="schedule_interval_hours_minutes_summary">%1$s and %2$s</string>
 </resources>

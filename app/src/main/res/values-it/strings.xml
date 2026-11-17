@@ -20,6 +20,12 @@
     <string name="create">Crea</string>
     <string name="cancel">Annulla</string>
     <string name="save">Salva</string>
+    <string name="wallpaper_name_label">Nome</string>
+    <string name="rename_wallpaper">Rinomina sfondo</string>
+    <string name="wallpaper_source_name">Nome suggerito: %1$s</string>
+    <string name="unsaved_changes_title">Modifiche non salvate</string>
+    <string name="unsaved_changes_body">Vuoi salvare le modifiche prima di continuare?</string>
+    <string name="discard_changes">Esci senza salvare</string>
     <string name="delete">Elimina</string>
     <string name="back">Indietro</string>
 
@@ -141,13 +147,19 @@
         <item quantity="other">%1$d sfondi · %2$s</item>
     </plurals>
     <plurals name="schedule_interval_minutes_summary">
-        <item quantity="one">Ogni %d min</item>
-        <item quantity="many">Ogni %d min</item>
-        <item quantity="other">Ogni %d min</item>
+        <item quantity="one">Ogni minuto</item>
+        <item quantity="many">Ogni %d minuti</item>
+        <item quantity="other">Ogni %d minuti</item>
     </plurals>
     <plurals name="schedule_interval_hours_summary">
-        <item quantity="one">Ogni ora</item>
+        <item quantity="one">Ogni %d ora</item>
         <item quantity="many">Ogni %d ore</item>
         <item quantity="other">Ogni %d ore</item>
     </plurals>
+    <plurals name="schedule_interval_minutes_part">
+        <item quantity="one">%d minuto</item>
+        <item quantity="many">%d minuti</item>
+        <item quantity="other">%d minuti</item>
+    </plurals>
+    <string name="schedule_interval_hours_minutes_summary">%1$s e %2$s</string>
 </resources>

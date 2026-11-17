@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -52,6 +53,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -98,6 +100,8 @@ fun CarouselEditorScreen(
 ) {
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   var showAdd by rememberSaveable { mutableStateOf(false) }
+  var renameTargetId by rememberSaveable { mutableStateOf<String?>(null) }
+  val renameTarget = state.wallpaper(renameTargetId)
   var scheduleTargetName by rememberSaveable { mutableStateOf<String?>(null) }
   val scheduleTarget = scheduleTargetName?.let { name ->
     ApplyTarget.entries.firstOrNull { it.name == name }
@@ -138,7 +142,13 @@ fun CarouselEditorScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f),
           ) {
-            wallpaperItems(state, carousel, viewModel, onAdd = { showAdd = true })
+            wallpaperItems(
+              state,
+              carousel,
+              viewModel,
+              onAdd = { showAdd = true },
+              onRename = { renameTargetId = it },
+            )
           }
           Column(
             modifier = Modifier
@@ -169,7 +179,13 @@ fun CarouselEditorScreen(
               onSchedule = { scheduleTargetName = it.name },
             )
           }
-          wallpaperItems(state, carousel, viewModel, onAdd = { showAdd = true })
+          wallpaperItems(
+            state,
+            carousel,
+            viewModel,
+            onAdd = { showAdd = true },
+            onRename = { renameTargetId = it },
+          )
         }
       }
     }
@@ -207,6 +223,40 @@ fun CarouselEditorScreen(
     )
   }
 
+  if (renameTarget != null) {
+    var name by remember(renameTarget.id) { mutableStateOf(renameTarget.name) }
+    AlertDialog(
+      onDismissRequest = { renameTargetId = null },
+      title = { Text(stringResource(R.string.rename_wallpaper)) },
+      text = {
+        OutlinedTextField(
+          value = name,
+          onValueChange = { name = it },
+          label = { Text(stringResource(R.string.wallpaper_name_label)) },
+          supportingText = {
+            Text(stringResource(R.string.wallpaper_source_name, renameTarget.sourceName))
+          },
+          singleLine = true,
+        )
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            viewModel.renameWallpaper(renameTarget.id, name)
+            renameTargetId = null
+          },
+        ) {
+          Text(stringResource(R.string.save))
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { renameTargetId = null }) {
+          Text(stringResource(R.string.cancel))
+        }
+      },
+    )
+  }
+
   if (confirmDelete) {
     ConfirmDialog(
       title = stringResource(R.string.delete_carousel),
@@ -226,6 +276,7 @@ private fun LazyListScope.wallpaperItems(
   carousel: Carousel,
   viewModel: AppViewModel,
   onAdd: () -> Unit,
+  onRename: (String) -> Unit,
 ) {
   item(key = "wallpapers_header") {
     Row(
@@ -274,13 +325,14 @@ private fun LazyListScope.wallpaperItems(
     if (wallpaper != null) {
       val index = carousel.wallpaperIds.indexOf(wallpaperId)
       WallpaperRow(
-        wallpaperName = wallpaper.name,
+        wallpaperName = wallpaper.displayName(),
         imageFile = wallpaper.previewVariant()?.let { viewModel.imageFile(it.fileName) },
         position = index + 1,
         canMoveUp = index > 0,
         canMoveDown = index < carousel.wallpaperIds.lastIndex,
         onMoveUp = { viewModel.moveWallpaper(carousel.id, wallpaperId, up = true) },
         onMoveDown = { viewModel.moveWallpaper(carousel.id, wallpaperId, up = false) },
+        onRename = { onRename(wallpaperId) },
         onRemove = { viewModel.removeWallpaperFromCarousel(carousel.id, wallpaperId) },
       )
     }
@@ -296,6 +348,7 @@ private fun WallpaperRow(
   canMoveDown: Boolean,
   onMoveUp: () -> Unit,
   onMoveDown: () -> Unit,
+  onRename: () -> Unit,
   onRemove: () -> Unit,
 ) {
   Card(modifier = Modifier.fillMaxWidth()) {
@@ -332,6 +385,9 @@ private fun WallpaperRow(
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.weight(1f),
       )
+      IconButton(onClick = onRename) {
+        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.rename_wallpaper))
+      }
       IconButton(onClick = onMoveUp, enabled = canMoveUp) {
         Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.move_up))
       }
@@ -458,18 +514,38 @@ private fun TargetAssignmentCard(
 }
 
 @Composable
-private fun intervalSummary(minutes: Int): String = if (minutes % 60 == 0) {
-  pluralStringResource(
-    R.plurals.schedule_interval_hours_summary,
-    minutes / 60,
-    minutes / 60,
-  )
-} else {
-  pluralStringResource(
-    R.plurals.schedule_interval_minutes_summary,
-    minutes,
-    minutes,
-  )
+private fun intervalSummary(minutes: Int): String {
+  val hours = minutes / 60
+  val remainingMinutes = minutes % 60
+  return when {
+    hours == 0 -> pluralStringResource(
+      R.plurals.schedule_interval_minutes_summary,
+      remainingMinutes,
+      remainingMinutes,
+    )
+    remainingMinutes == 0 -> pluralStringResource(
+      R.plurals.schedule_interval_hours_summary,
+      hours,
+      hours,
+    )
+    else -> {
+      val hoursText = pluralStringResource(
+        R.plurals.schedule_interval_hours_summary,
+        hours,
+        hours,
+      )
+      val minutesText = pluralStringResource(
+        R.plurals.schedule_interval_minutes_part,
+        remainingMinutes,
+        remainingMinutes,
+      )
+      stringResource(
+        R.string.schedule_interval_hours_minutes_summary,
+        hoursText,
+        minutesText,
+      )
+    }
+  }
 }
 
 @Composable
@@ -735,7 +811,7 @@ private fun AddWallpapersDialog(
                 }
               }
               Text(
-                text = wallpaper.name,
+                text = wallpaper.displayName(),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

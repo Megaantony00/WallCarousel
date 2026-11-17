@@ -105,7 +105,7 @@ class StaticWallpaperApplier(
       try {
         val flags = if (single == ApplyTarget.LOCK) WallpaperManager.FLAG_LOCK else WallpaperManager.FLAG_SYSTEM
         manager.setBitmap(bitmap, null, false, flags)
-        applied += wallpaper.name
+        applied += wallpaper.displayName()
         repository.update { current ->
           val updated = current.config(single).copy(
             cursor = index + 1,

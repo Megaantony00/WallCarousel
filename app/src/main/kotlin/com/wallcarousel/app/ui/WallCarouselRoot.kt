@@ -61,6 +61,7 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
   val snackbarHostState = remember { SnackbarHostState() }
   val resources = LocalResources.current
   var section by rememberSaveable { mutableStateOf(AppSection.LIBRARY) }
+  var editorActive by remember { mutableStateOf(false) }
 
   LaunchedEffect(message, resources) {
     val current = message ?: return@LaunchedEffect
@@ -98,7 +99,7 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
     Scaffold(
       snackbarHost = { SnackbarHost(snackbarHostState) },
       bottomBar = {
-        if (!expanded) {
+        if (!expanded && !editorActive) {
           NavigationBar {
             AppSection.entries.forEach { item ->
               NavigationBarItem(
@@ -113,7 +114,7 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
       },
     ) { innerPadding ->
       Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-        if (expanded) {
+        if (expanded && !editorActive) {
           NavigationRail {
             Spacer(Modifier.height(8.dp))
             AppSection.entries.forEach { item ->
@@ -128,7 +129,11 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
         }
         Box(modifier = Modifier.weight(1f)) {
           when (section) {
-            AppSection.LIBRARY -> LibraryScreen(state = loaded, viewModel = viewModel)
+            AppSection.LIBRARY -> LibraryScreen(
+              state = loaded,
+              viewModel = viewModel,
+              onEditorActive = { editorActive = it },
+            )
             AppSection.CAROUSELS -> CarouselListScreen(state = loaded, viewModel = viewModel)
             AppSection.SETTINGS -> SettingsScreen(state = loaded, viewModel = viewModel)
           }

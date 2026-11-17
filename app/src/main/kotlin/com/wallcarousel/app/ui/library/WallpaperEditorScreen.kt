@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,8 +49,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,6 +96,11 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+private sealed interface PendingChange {
+  data object Back : PendingChange
+  data class OrientationChange(val value: Orientation) : PendingChange
+}
+
 @Composable
 fun WallpaperEditorScreen(
   state: AppState,
@@ -101,7 +109,19 @@ fun WallpaperEditorScreen(
   onBack: () -> Unit,
 ) {
   var orientationName by rememberSaveable(wallpaper.id) {
-    mutableStateOf((wallpaper.availableOrientations().firstOrNull() ?: Orientation.PORTRAIT).name)
+    val natural = when {
+      wallpaper.portrait == null && wallpaper.landscape != null -> Orientation.LANDSCAPE
+      wallpaper.landscape == null && wallpaper.portrait != null -> Orientation.PORTRAIT
+      else -> {
+        val variant = wallpaper.previewVariant()
+        if (variant != null && variant.width > variant.height) {
+          Orientation.LANDSCAPE
+        } else {
+          Orientation.PORTRAIT
+        }
+      }
+    }
+    mutableStateOf(natural.name)
   }
   val orientation = Orientation.entries.firstOrNull { it.name == orientationName } ?: Orientation.PORTRAIT
   val stored = wallpaper.variant(orientation)
@@ -109,9 +129,12 @@ fun WallpaperEditorScreen(
   LaunchedEffect(stored) {
     if (stored != null) draft = stored
   }
+  var draftName by rememberSaveable(wallpaper.id) { mutableStateOf(wallpaper.name) }
+  LaunchedEffect(wallpaper.name) { draftName = wallpaper.name }
 
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   var showGrid by rememberSaveable(wallpaper.id) { mutableStateOf(false) }
+  var pendingChange by remember { mutableStateOf<PendingChange?>(null) }
   val addLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.PickVisualMedia(),
   ) { uri ->
@@ -121,27 +144,45 @@ fun WallpaperEditorScreen(
     addLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
   }
 
-  val save: () -> Unit = { draft?.let { viewModel.updateVariant(wallpaper.id, orientation, it) } }
-  val onTransformEnd: (Float, Float, Float) -> Unit = { focalX, focalY, zoom ->
-    draft?.let { current ->
-      val updated = current.copy(focalX = focalX, focalY = focalY, zoom = zoom)
-      draft = updated
-      viewModel.updateVariant(wallpaper.id, orientation, updated)
+  val dirty = draft != stored || draftName.trim() != wallpaper.name
+  val namePlaceholder = wallpaper.sourceName.ifBlank {
+    stringResource(R.string.wallpaper_default_name)
+  }
+  val saveAll: () -> Unit = {
+    if (draft != null || draftName.trim() != wallpaper.name) {
+      viewModel.updateWallpaper(wallpaper.id, draftName, orientation, draft)
     }
   }
+  val applyPending: (PendingChange) -> Unit = { change ->
+    when (change) {
+      PendingChange.Back -> onBack()
+      is PendingChange.OrientationChange -> orientationName = change.value.name
+    }
+  }
+  val requestBack: () -> Unit = {
+    if (dirty) pendingChange = PendingChange.Back else onBack()
+  }
+  val requestOrientation: (Orientation) -> Unit = { value ->
+    if (value != orientation) {
+      if (dirty) pendingChange = PendingChange.OrientationChange(value) else orientationName = value.name
+    }
+  }
+  val onTransformEnd: (Float, Float, Float) -> Unit = { focalX, focalY, zoom ->
+    draft = draft?.copy(focalX = focalX, focalY = focalY, zoom = zoom)
+  }
 
-  BackHandler(onBack = onBack)
+  BackHandler(onBack = requestBack)
 
   Column(modifier = Modifier.fillMaxSize()) {
     Row(
       modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      IconButton(onClick = onBack) {
+      IconButton(onClick = requestBack) {
         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
       }
       Text(
-        text = wallpaper.name,
+        text = wallpaper.displayName(),
         style = MaterialTheme.typography.titleLarge,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -181,9 +222,13 @@ fun WallpaperEditorScreen(
               orientation = orientation,
               stored = stored,
               draft = draft,
-              onOrientationChange = { orientationName = it.name },
+              name = draftName,
+              namePlaceholder = namePlaceholder,
+              onNameChange = { draftName = it },
+              onOrientationChange = requestOrientation,
               onDraftChange = { draft = it },
-              onSave = save,
+              onSave = saveAll,
+              canSave = dirty,
               onAddVariant = launchAdd,
             )
           }
@@ -209,14 +254,50 @@ fun WallpaperEditorScreen(
             orientation = orientation,
             stored = stored,
             draft = draft,
-            onOrientationChange = { orientationName = it.name },
+            name = draftName,
+            namePlaceholder = namePlaceholder,
+            onNameChange = { draftName = it },
+            onOrientationChange = requestOrientation,
             onDraftChange = { draft = it },
-            onSave = save,
+            onSave = saveAll,
+            canSave = dirty,
             onAddVariant = launchAdd,
           )
         }
       }
     }
+  }
+
+  pendingChange?.let { change ->
+    AlertDialog(
+      onDismissRequest = { pendingChange = null },
+      title = { Text(stringResource(R.string.unsaved_changes_title)) },
+      text = { Text(stringResource(R.string.unsaved_changes_body)) },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            saveAll()
+            pendingChange = null
+            applyPending(change)
+          },
+        ) {
+          Text(stringResource(R.string.save))
+        }
+      },
+      dismissButton = {
+        TextButton(
+          onClick = {
+            pendingChange = null
+            if (change is PendingChange.OrientationChange) {
+              draftName = wallpaper.name
+            }
+            applyPending(change)
+          },
+        ) {
+          Text(stringResource(R.string.discard_changes))
+        }
+      },
+    )
   }
 
   if (confirmDelete) {
@@ -238,12 +319,34 @@ private fun EditorControls(
   orientation: Orientation,
   stored: Variant?,
   draft: Variant?,
+  name: String,
+  namePlaceholder: String,
+  onNameChange: (String) -> Unit,
   onOrientationChange: (Orientation) -> Unit,
   onDraftChange: (Variant) -> Unit,
   onSave: () -> Unit,
+  canSave: Boolean,
   onAddVariant: () -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    OutlinedTextField(
+      value = name,
+      onValueChange = onNameChange,
+      label = { Text(stringResource(R.string.wallpaper_name_label)) },
+      supportingText = {
+        Text(stringResource(R.string.wallpaper_source_name, namePlaceholder))
+      },
+      singleLine = true,
+      modifier = Modifier.fillMaxWidth(),
+    )
+    Button(
+      onClick = onSave,
+      enabled = canSave,
+      modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+    ) {
+      Text(stringResource(R.string.save))
+    }
+
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       Orientation.entries.forEach { item ->
         FilterChip(
@@ -301,7 +404,6 @@ private fun EditorControls(
       value = current.zoom,
       range = 1f..3f,
       onValueChange = { onDraftChange(current.copy(zoom = it)) },
-      onValueChangeFinished = onSave,
     )
     AdjustmentSlider(
       label = stringResource(R.string.brightness),
@@ -309,7 +411,6 @@ private fun EditorControls(
       value = current.brightness,
       range = -0.5f..0.5f,
       onValueChange = { onDraftChange(current.copy(brightness = it)) },
-      onValueChangeFinished = onSave,
     )
     AdjustmentSlider(
       label = stringResource(R.string.contrast),
@@ -317,7 +418,6 @@ private fun EditorControls(
       value = current.contrast,
       range = 0.5f..1.5f,
       onValueChange = { onDraftChange(current.copy(contrast = it)) },
-      onValueChangeFinished = onSave,
     )
     AdjustmentSlider(
       label = stringResource(R.string.saturation),
@@ -325,7 +425,6 @@ private fun EditorControls(
       value = current.saturation,
       range = 0f..2f,
       onValueChange = { onDraftChange(current.copy(saturation = it)) },
-      onValueChangeFinished = onSave,
     )
     AdjustmentSlider(
       label = stringResource(R.string.blur),
@@ -334,7 +433,6 @@ private fun EditorControls(
       range = 0f..25f,
       steps = 24,
       onValueChange = { onDraftChange(current.copy(blur = it.roundToInt())) },
-      onValueChangeFinished = onSave,
     )
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -348,7 +446,6 @@ private fun EditorControls(
                 height = stored.height,
               ),
             )
-            onSave()
           }
         },
       ) {
@@ -366,7 +463,6 @@ private fun AdjustmentSlider(
   range: ClosedFloatingPointRange<Float>,
   steps: Int = 0,
   onValueChange: (Float) -> Unit,
-  onValueChangeFinished: () -> Unit,
 ) {
   Column {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -382,7 +478,6 @@ private fun AdjustmentSlider(
       onValueChange = onValueChange,
       valueRange = range,
       steps = steps,
-      onValueChangeFinished = onValueChangeFinished,
     )
   }
 }

@@ -27,6 +27,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,9 +54,16 @@ import com.wallcarousel.app.ui.components.ScreenHeader
 import com.wallcarousel.app.ui.components.rememberThumbnail
 
 @Composable
-fun LibraryScreen(state: AppState, viewModel: AppViewModel) {
+fun LibraryScreen(
+  state: AppState,
+  viewModel: AppViewModel,
+  onEditorActive: (Boolean) -> Unit = {},
+) {
   var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
   val selected = state.wallpaper(selectedId)
+
+  LaunchedEffect(selected != null) { onEditorActive(selected != null) }
+  DisposableEffect(Unit) { onDispose { onEditorActive(false) } }
 
   if (selected != null) {
     androidx.activity.compose.BackHandler { selectedId = null }
@@ -171,7 +180,7 @@ private fun WallpaperCard(
       if (bitmap != null) {
         Image(
           bitmap = bitmap.asImageBitmap(),
-          contentDescription = wallpaper.name,
+          contentDescription = wallpaper.displayName(),
           contentScale = ContentScale.Crop,
           modifier = Modifier.fillMaxSize(),
         )

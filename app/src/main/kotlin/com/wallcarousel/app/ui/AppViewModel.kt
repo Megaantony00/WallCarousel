@@ -5,7 +5,6 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.wallcarousel.app.R
 import com.wallcarousel.app.WallCarouselApplication
 import com.wallcarousel.app.data.ImportedImage
 import com.wallcarousel.app.data.model.ApplyTarget
@@ -40,7 +39,6 @@ sealed interface UiMessage {
 class AppViewModel(application: Application) : AndroidViewModel(application) {
   private val container = (application as WallCarouselApplication).container
   private val repository = container.repository
-  private val defaultWallpaperName = application.getString(R.string.wallpaper_default_name)
 
   val state = repository.state
 
@@ -61,18 +59,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch {
       _busy.value = true
       try {
-        val imported = uris.mapNotNull { container.imageStore.import(it, defaultWallpaperName) }
+        val imported = uris.mapNotNull { container.imageStore.import(it) }
         if (imported.isEmpty()) {
           _message.value = UiMessage.ImportFailed
           return@launch
         }
         val now = System.currentTimeMillis()
         repository.update { current ->
-          val existingNames = current.wallpapers.map { it.name }.toMutableList()
+          val usedSourceNames = current.wallpapers
+            .map { it.sourceName.ifBlank { it.name } }
+            .toMutableList()
           val additions = imported.mapIndexed { index, image ->
-            val name = uniqueName(image.displayName, existingNames)
-            existingNames += name
-            image.toWallpaper(name, now + index)
+            val sourceName = uniqueName(image.displayName, usedSourceNames)
+            usedSourceNames += sourceName
+            image.toWallpaper(now + index, sourceName)
           }
           current.copy(wallpapers = current.wallpapers + additions)
         }
@@ -90,12 +90,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
       val wallpaper = repository.ensureLoaded().wallpaper(wallpaperId) ?: return@launch
       _busy.value = true
       try {
-        val imported = container.imageStore.import(uri, defaultWallpaperName)
+        val imported = container.imageStore.import(uri)
         if (imported == null) {
           _message.value = UiMessage.ImportFailed
           return@launch
         }
         val previous = wallpaper.variant(orientation)
+        val otherOrientation = if (orientation == Orientation.PORTRAIT) {
+          Orientation.LANDSCAPE
+        } else {
+          Orientation.PORTRAIT
+        }
+        val other = wallpaper.variant(otherOrientation)
         val variant = imported.toVariant()
         repository.update { current ->
           current.copy(
@@ -109,7 +115,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             },
           )
         }
-        previous?.let { container.imageStore.delete(it.fileName) }
+        if (previous != null && previous.fileName != other?.fileName) {
+          container.imageStore.delete(previous.fileName)
+        }
         ThumbnailLoader.clear()
         _message.value = UiMessage.Imported(1)
       } catch (error: Exception) {
@@ -120,17 +128,39 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  fun updateVariant(wallpaperId: String, orientation: Orientation, variant: Variant) {
+  fun updateWallpaper(
+    wallpaperId: String,
+    name: String,
+    orientation: Orientation,
+    variant: Variant?,
+  ) {
     viewModelScope.launch {
       repository.update { current ->
         current.copy(
           wallpapers = current.wallpapers.map { wallpaper ->
             if (wallpaper.id != wallpaperId) {
               wallpaper
-            } else when (orientation) {
-              Orientation.PORTRAIT -> wallpaper.copy(portrait = variant)
-              Orientation.LANDSCAPE -> wallpaper.copy(landscape = variant)
+            } else {
+              val renamed = wallpaper.copy(name = name.trim())
+              if (variant == null) {
+                renamed
+              } else when (orientation) {
+                Orientation.PORTRAIT -> renamed.copy(portrait = variant)
+                Orientation.LANDSCAPE -> renamed.copy(landscape = variant)
+              }
             }
+          },
+        )
+      }
+    }
+  }
+
+  fun renameWallpaper(wallpaperId: String, name: String) {
+    viewModelScope.launch {
+      repository.update { current ->
+        current.copy(
+          wallpapers = current.wallpapers.map { wallpaper ->
+            if (wallpaper.id == wallpaperId) wallpaper.copy(name = name.trim()) else wallpaper
           },
         )
       }
@@ -331,15 +361,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     height = height,
   )
 
-  private fun ImportedImage.toWallpaper(name: String, importedAt: Long): Wallpaper {
+  private fun ImportedImage.toWallpaper(importedAt: Long, sourceName: String): Wallpaper {
     val variant = toVariant()
-    val orientation = if (width > height) Orientation.LANDSCAPE else Orientation.PORTRAIT
     return Wallpaper(
       id = UUID.randomUUID().toString(),
-      name = name,
-      portrait = if (orientation == Orientation.PORTRAIT) variant else null,
-      landscape = if (orientation == Orientation.LANDSCAPE) variant else null,
+      name = "",
+      portrait = variant,
+      landscape = variant,
       importedAt = importedAt,
+      sourceName = sourceName,
     )
   }
 

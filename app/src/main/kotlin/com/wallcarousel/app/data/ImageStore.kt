@@ -8,6 +8,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,10 +33,10 @@ class ImageStore(context: Context) {
 
   /**
    * Copies [uri] into the sandbox and reads its oriented dimensions. Returns
-   * null when the content cannot be decoded as an image. [fallbackName] is used
-   * when the provider does not expose a usable display name.
+   * null when the content cannot be decoded as an image. When the provider does
+   * not expose a usable display name, the import time is used instead.
    */
-  suspend fun import(uri: Uri, fallbackName: String): ImportedImage? = withContext(Dispatchers.IO) {
+  suspend fun import(uri: Uri): ImportedImage? = withContext(Dispatchers.IO) {
     val resolver = appContext.contentResolver
     val mimeType = resolver.getType(uri) ?: "image/jpeg"
     val extension = MimeTypeMap.getSingleton()
@@ -65,7 +68,7 @@ class ImageStore(context: Context) {
       fileName = fileName,
       width = size.first,
       height = size.second,
-      displayName = displayName(uri, fallbackName),
+      displayName = displayName(uri),
     )
   }
 
@@ -92,7 +95,7 @@ class ImageStore(context: Context) {
     return width to height
   }
 
-  private fun displayName(uri: Uri, fallbackName: String): String {
+  private fun displayName(uri: Uri): String {
     val fromProvider = runCatching {
       appContext.contentResolver.query(
         uri,
@@ -107,11 +110,11 @@ class ImageStore(context: Context) {
       ?.substringBeforeLast('.')
       ?.trim()
 
-    // Some Photo Picker builds expose the MediaStore id as display name; it is
-    // not meaningful to the user, so fall back to a localized default.
+    // Some Photo Picker builds expose only a numeric MediaStore id; it is not
+    // meaningful to the user, so use the import time as a readable fallback.
     val usable = fromProvider?.takeIf {
-      it.isNotBlank() && it != uri.lastPathSegment
+      it.isNotBlank() && it != uri.lastPathSegment && !it.all(Char::isDigit)
     }
-    return usable ?: fallbackName.trim().ifBlank { "Wallpaper" }
+    return usable ?: SimpleDateFormat("d MMM yyyy HH.mm", Locale.getDefault()).format(Date())
   }
 }

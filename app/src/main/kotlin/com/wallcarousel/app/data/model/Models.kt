@@ -81,7 +81,12 @@ data class Wallpaper(
   val portrait: Variant? = null,
   val landscape: Variant? = null,
   val importedAt: Long = 0L,
+  /** Name suggested by the gallery or the import time; used as a placeholder. */
+  val sourceName: String = "",
 ) {
+  /** Custom name when set, otherwise the gallery/import name. */
+  fun displayName(): String = name.ifBlank { sourceName }
+
   fun variant(orientation: Orientation): Variant? = when (orientation) {
     Orientation.PORTRAIT -> portrait
     Orientation.LANDSCAPE -> landscape
