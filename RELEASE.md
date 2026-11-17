@@ -64,13 +64,17 @@ Il metadata dell'app sta in `fastlane/metadata/android/`. Il recipe per
 `fdroiddata` è in `fdroid/com.wallcarousel.app.yml`, con lo SHA del tag
 `f1beb51bb15442114c7643df52e63bd6ad25faab`.
 
-La merge request è aperta:
-https://gitlab.com/fdroid/fdroiddata/-/merge_requests/57823
+La merge request https://gitlab.com/fdroid/fdroiddata/-/merge_requests/57823
+è stata chiusa il 17 novembre 2026 dal manutentore `linsui` con questa
+motivazione:
 
-Il fork è `Megaantony00/fdroiddata`, ramo `wallcarousel-1.0`. La pipeline del
-fork non parte finché l'account GitLab non completa la verifica d'identità
-(`Identity verification is required in order to run CI jobs`); nella merge
-request è lasciata una nota per i manutentori.
+- l'app non è ancora mantenuta da più di 3 mesi;
+- l'app non offre funzionalità uniche rispetto a quelle già presenti.
+
+Per riprovare servirà continuare a pubblicare aggiornamenti per almeno tre
+mesi e aggiungere funzionalità davvero distintive. Il fork
+`Megaantony00/fdroiddata` e il ramo `wallcarousel-1.0` restano disponibili per
+una nuova merge request.
 
 Punti già pronti per F-Droid:
 
