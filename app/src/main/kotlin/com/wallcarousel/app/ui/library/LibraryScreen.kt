@@ -147,11 +147,11 @@ fun LibraryScreen(
                 ),
               )
             }
+            TextButton(onClick = { showAddToCarousel = true }) {
+              Text(stringResource(R.string.add_to_carousel))
+            }
             IconButton(onClick = { showDeleteSelected = true }) {
               Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
-            }
-            IconButton(onClick = { showAddToCarousel = true }) {
-              Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_carousel))
             }
             IconButton(onClick = { selectedIds = emptySet() }) {
               Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
