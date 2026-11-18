@@ -1,0 +1,3 @@
+- Seleziona più sfondi ed eliminali o aggiungili a un carosello.
+- Seleziona più caroselli ed eliminali o riordinali dalla lista.
+- Card degli sfondi più chiare e pulsante Salva esplicito nell'editor.

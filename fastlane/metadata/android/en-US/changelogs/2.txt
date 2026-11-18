@@ -1,0 +1,3 @@
+- Select multiple wallpapers and delete them or add them to a carousel.
+- Select multiple carousels and delete or reorder them from the list.
+- Clearer wallpaper cards and an explicit Save button in the editor.
