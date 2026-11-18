@@ -1,0 +1,5 @@
+- Import photos from the system gallery, with their real file names.
+- Optional pre-rendering of the next wallpaper in Settings (uses more resources).
+- Select all with a checkbox in a carousel; reorder carousels from the list.
+- Drag back while selecting to deselect items.
+- Clearer "Add to carousel" dialog that disables carousels already containing the selection.

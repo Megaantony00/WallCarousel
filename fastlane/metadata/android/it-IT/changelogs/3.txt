@@ -1,0 +1,5 @@
+- Importa le foto dalla galleria di sistema, con il nome reale del file.
+- Pre-render opzionale dello sfondo successivo nelle Impostazioni (usa più risorse).
+- Seleziona tutte con una casella nel carosello; riordina i caroselli dalla lista.
+- Trascinando indietro durante la selezione deselezioni gli elementi.
+- Dialog "Aggiungi al carosello" più chiaro, che disabilita i caroselli già completi.
