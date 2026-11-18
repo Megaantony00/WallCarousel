@@ -1,0 +1,4 @@
+- Rimossi i chevron dall’editor; l’hint dello swipe ora è nel testo.
+- L’anteprima parte alla stessa altezza del campo Nome.
+- Lo swipe tra gli sfondi fa scorrere tutta la schermata invece di staccare di netto.
+- La casella "Seleziona tutte" in "Scegli sfondi" mantiene il suo spazio, quindi la dialog non salta più.

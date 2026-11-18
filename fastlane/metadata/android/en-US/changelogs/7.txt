@@ -1,0 +1,4 @@
+- Removed the chevrons from the editor; the swipe hint is in the text now.
+- The preview starts at the same height as the name field.
+- Swiping between wallpapers now slides the whole screen instead of cutting.
+- The select-all checkbox in "Choose wallpapers" keeps its space, so the dialog no longer jumps.

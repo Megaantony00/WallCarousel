@@ -3,6 +3,12 @@ package com.wallcarousel.app.ui.library
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -88,6 +94,7 @@ fun LibraryScreen(
   }
   var showDeleteSelected by rememberSaveable { mutableStateOf(false) }
   var showAddToCarousel by rememberSaveable { mutableStateOf(false) }
+  var navigationForward by rememberSaveable { mutableStateOf(true) }
   val selected = state.wallpaper(selectedId)
   val selectionMode = selectedIds.isNotEmpty()
   val allIds = state.wallpapers.map { it.id }
@@ -106,14 +113,33 @@ fun LibraryScreen(
   BackHandler(enabled = selectionMode) { selectedIds = emptySet() }
 
   if (selected != null) {
-    BackHandler { selectedId = null }
-    WallpaperEditorScreen(
-      state = state,
-      wallpaper = selected,
-      viewModel = viewModel,
-      onBack = { selectedId = null },
-      onNavigate = { selectedId = it },
-    )
+    AnimatedContent(
+      targetState = selected.id,
+      transitionSpec = {
+        if (navigationForward) {
+          (slideInHorizontally { it } + fadeIn()) togetherWith
+            (slideOutHorizontally { -it } + fadeOut())
+        } else {
+          (slideInHorizontally { -it } + fadeIn()) togetherWith
+            (slideOutHorizontally { it } + fadeOut())
+        }
+      },
+      label = "wallpaper-navigation",
+    ) { targetId ->
+      val target = state.wallpaper(targetId)
+      if (target != null) {
+        WallpaperEditorScreen(
+          state = state,
+          wallpaper = target,
+          viewModel = viewModel,
+          onBack = { selectedId = null },
+          onNavigate = { nextId, forward ->
+            navigationForward = forward
+            selectedId = nextId
+          },
+        )
+      }
+    }
     return
   }
 

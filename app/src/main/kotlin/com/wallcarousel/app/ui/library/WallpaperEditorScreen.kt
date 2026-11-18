@@ -37,8 +37,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -104,7 +102,7 @@ import kotlin.math.roundToInt
 private sealed interface PendingChange {
   data object Back : PendingChange
   data class OrientationChange(val value: Orientation) : PendingChange
-  data class Navigate(val wallpaperId: String) : PendingChange
+  data class Navigate(val wallpaperId: String, val forward: Boolean) : PendingChange
 }
 
 @Composable
@@ -113,7 +111,7 @@ fun WallpaperEditorScreen(
   wallpaper: Wallpaper,
   viewModel: AppViewModel,
   onBack: () -> Unit,
-  onNavigate: (String) -> Unit,
+  onNavigate: (String, Boolean) -> Unit,
 ) {
   var orientationName by rememberSaveable(wallpaper.id) {
     val natural = when {
@@ -169,8 +167,12 @@ fun WallpaperEditorScreen(
   }
   val latestPrevious = rememberUpdatedState(previousId)
   val latestNext = rememberUpdatedState(nextId)
-  val requestNavigate: (String) -> Unit = { target ->
-    if (dirty) pendingChange = PendingChange.Navigate(target) else onNavigate(target)
+  val requestNavigate: (String, Boolean) -> Unit = { target, forward ->
+    if (dirty) {
+      pendingChange = PendingChange.Navigate(target, forward)
+    } else {
+      onNavigate(target, forward)
+    }
   }
   val latestRequestNavigate = rememberUpdatedState(requestNavigate)
   val saveAll: () -> Unit = {
@@ -182,7 +184,7 @@ fun WallpaperEditorScreen(
   val applyPending: (PendingChange) -> Unit = { change ->
     when (change) {
       PendingChange.Back -> onBack()
-      is PendingChange.Navigate -> onNavigate(change.wallpaperId)
+      is PendingChange.Navigate -> onNavigate(change.wallpaperId, change.forward)
       is PendingChange.OrientationChange -> orientationName = change.value.name
     }
   }
@@ -230,9 +232,9 @@ fun WallpaperEditorScreen(
           }
           if (tracking && abs(totalX) >= 80.dp.toPx() && abs(totalX) > abs(totalY)) {
             if (totalX < 0) {
-              latestNext.value?.let { latestRequestNavigate.value(it) }
+              latestNext.value?.let { latestRequestNavigate.value(it, true) }
             } else {
-              latestPrevious.value?.let { latestRequestNavigate.value(it) }
+              latestPrevious.value?.let { latestRequestNavigate.value(it, false) }
             }
           }
         }
@@ -247,14 +249,6 @@ fun WallpaperEditorScreen(
       IconButton(onClick = requestBack) {
         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
       }
-      if (state.wallpapers.size > 1) {
-        Icon(
-          imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-          contentDescription = null,
-          tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-          modifier = Modifier.size(20.dp),
-        )
-      }
       Text(
         text = wallpaper.displayName(),
         style = MaterialTheme.typography.titleLarge,
@@ -262,14 +256,6 @@ fun WallpaperEditorScreen(
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
       )
-      if (state.wallpapers.size > 1) {
-        Icon(
-          imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-          contentDescription = null,
-          tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-          modifier = Modifier.size(20.dp),
-        )
-      }
       IconButton(onClick = { confirmDelete = true }) {
         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_wallpaper))
       }
@@ -611,7 +597,7 @@ private fun WallpaperPreview(
   onTransformEnd: (Float, Float, Float) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+  BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.TopCenter) {
     val maxPreviewWidth = if (aspectRatio < 1f) 380.dp else maxWidth
     val previewWidth = minOf(maxWidth, maxPreviewWidth)
     val density = LocalDensity.current

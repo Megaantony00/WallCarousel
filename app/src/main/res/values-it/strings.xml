@@ -53,7 +53,7 @@
     <string name="orientation_landscape">Orizzontale</string>
     <string name="wallpaper_preview">Anteprima sfondo</string>
     <string name="no_preview">Nessuna anteprima disponibile</string>
-    <string name="drag_focus_hint">Trascina con un dito per spostare, usa due dita per lo zoom. La griglia resta solo nell\'anteprima.</string>
+    <string name="drag_focus_hint">Trascina con un dito per spostare, usa due dita per lo zoom. Scorri fuori dalla foto per cambiare sfondo. La griglia resta solo nell\'anteprima.</string>
     <string name="show_grid">Mostra griglia</string>
     <string name="hide_grid">Nascondi griglia</string>
     <string name="zoom">Zoom</string>
