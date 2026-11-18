@@ -1,0 +1,5 @@
+- Swipe sull’intestazione dell’editor per passare allo sfondo precedente o successivo.
+- Pulsante Salva in basso a destra in orizzontale.
+- Tocca il nome del carosello per rinominarlo.
+- Selezione in stile picker in "Aggiungi sfondi", con seleziona/deseleziona tutte.
+- Pulsante Riordina per mescolare casualmente un carosello.

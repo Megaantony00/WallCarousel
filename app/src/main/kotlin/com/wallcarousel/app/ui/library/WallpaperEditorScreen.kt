@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -100,6 +102,7 @@ import kotlin.math.roundToInt
 private sealed interface PendingChange {
   data object Back : PendingChange
   data class OrientationChange(val value: Orientation) : PendingChange
+  data class Navigate(val wallpaperId: String) : PendingChange
 }
 
 @Composable
@@ -108,6 +111,7 @@ fun WallpaperEditorScreen(
   wallpaper: Wallpaper,
   viewModel: AppViewModel,
   onBack: () -> Unit,
+  onNavigate: (String) -> Unit,
 ) {
   var orientationName by rememberSaveable(wallpaper.id) {
     val natural = when {
@@ -150,6 +154,23 @@ fun WallpaperEditorScreen(
   val namePlaceholder = wallpaper.sourceName.ifBlank {
     stringResource(R.string.wallpaper_default_name)
   }
+  val currentIndex = state.wallpapers.indexOfFirst { it.id == wallpaper.id }
+  val previousId = if (state.wallpapers.size > 1 && currentIndex >= 0) {
+    state.wallpapers[(currentIndex - 1 + state.wallpapers.size) % state.wallpapers.size].id
+  } else {
+    null
+  }
+  val nextId = if (state.wallpapers.size > 1 && currentIndex >= 0) {
+    state.wallpapers[(currentIndex + 1) % state.wallpapers.size].id
+  } else {
+    null
+  }
+  val latestPrevious = rememberUpdatedState(previousId)
+  val latestNext = rememberUpdatedState(nextId)
+  val requestNavigate: (String) -> Unit = { target ->
+    if (dirty) pendingChange = PendingChange.Navigate(target) else onNavigate(target)
+  }
+  val latestRequestNavigate = rememberUpdatedState(requestNavigate)
   val saveAll: () -> Unit = {
     focusManager.clearFocus()
     if (draft != null || draftName.trim() != wallpaper.name) {
@@ -159,6 +180,7 @@ fun WallpaperEditorScreen(
   val applyPending: (PendingChange) -> Unit = { change ->
     when (change) {
       PendingChange.Back -> onBack()
+      is PendingChange.Navigate -> onNavigate(change.wallpaperId)
       is PendingChange.OrientationChange -> orientationName = change.value.name
     }
   }
@@ -178,7 +200,31 @@ fun WallpaperEditorScreen(
 
   Column(modifier = Modifier.fillMaxSize()) {
     Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp, vertical = 8.dp)
+        .pointerInput(Unit) {
+          var dragTotal = 0f
+          detectHorizontalDragGestures(
+            onDragStart = { dragTotal = 0f },
+            onDragCancel = { dragTotal = 0f },
+            onHorizontalDrag = { change, dragAmount ->
+              dragTotal += dragAmount
+              change.consume()
+            },
+            onDragEnd = {
+              val threshold = 80.dp.toPx()
+              when {
+                dragTotal <= -threshold -> latestNext.value?.let {
+                  latestRequestNavigate.value(it)
+                }
+                dragTotal >= threshold -> latestPrevious.value?.let {
+                  latestRequestNavigate.value(it)
+                }
+              }
+            },
+          )
+        },
       verticalAlignment = Alignment.CenterVertically,
     ) {
       IconButton(onClick = requestBack) {
@@ -233,6 +279,7 @@ fun WallpaperEditorScreen(
               onSave = saveAll,
               canSave = dirty,
               onAddVariant = launchAdd,
+              saveAtBottom = true,
             )
           }
         }
@@ -265,6 +312,7 @@ fun WallpaperEditorScreen(
             onSave = saveAll,
             canSave = dirty,
             onAddVariant = launchAdd,
+            saveAtBottom = false,
           )
         }
       }
@@ -330,6 +378,7 @@ private fun EditorControls(
   onSave: () -> Unit,
   canSave: Boolean,
   onAddVariant: () -> Unit,
+  saveAtBottom: Boolean,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
     OutlinedTextField(
@@ -342,12 +391,14 @@ private fun EditorControls(
       singleLine = true,
       modifier = Modifier.fillMaxWidth(),
     )
-    Button(
-      onClick = onSave,
-      enabled = canSave,
-      modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-    ) {
-      Text(stringResource(R.string.save))
+    if (!saveAtBottom) {
+      Button(
+        onClick = onSave,
+        enabled = canSave,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+      ) {
+        Text(stringResource(R.string.save))
+      }
     }
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -388,6 +439,20 @@ private fun EditorControls(
               ),
               modifier = Modifier.padding(start = 8.dp),
             )
+          }
+        }
+      }
+      if (saveAtBottom) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End,
+        ) {
+          Button(
+            onClick = onSave,
+            enabled = canSave,
+            modifier = Modifier.heightIn(min = 48.dp),
+          ) {
+            Text(stringResource(R.string.save))
           }
         }
       }
@@ -438,7 +503,14 @@ private fun EditorControls(
       onValueChange = { onDraftChange(current.copy(blur = it.roundToInt())) },
     )
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (saveAtBottom) {
+        Spacer(modifier = Modifier.weight(1f))
+      }
       OutlinedButton(
         onClick = {
           if (stored != null) {
@@ -453,6 +525,15 @@ private fun EditorControls(
         },
       ) {
         Text(stringResource(R.string.reset_adjustments))
+      }
+      if (saveAtBottom) {
+        Button(
+          onClick = onSave,
+          enabled = canSave,
+          modifier = Modifier.heightIn(min = 48.dp),
+        ) {
+          Text(stringResource(R.string.save))
+        }
       }
     }
   }

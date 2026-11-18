@@ -199,6 +199,42 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
+  fun renameCarousel(carouselId: String, name: String) {
+    val clean = name.trim()
+    if (clean.isEmpty()) return
+    viewModelScope.launch {
+      repository.update { state ->
+        val used = state.carousels.filterNot { it.id == carouselId }.map { it.name }
+        val unique = uniqueName(clean, used)
+        state.copy(
+          carousels = state.carousels.map { carousel ->
+            if (carousel.id == carouselId) carousel.copy(name = unique) else carousel
+          },
+        )
+      }
+    }
+  }
+
+  fun shuffleWallpapers(carouselId: String) {
+    viewModelScope.launch {
+      repository.update { state ->
+        state.copy(
+          carousels = state.carousels.map { carousel ->
+            if (carousel.id != carouselId || carousel.wallpaperIds.size < 2) {
+              carousel
+            } else {
+              var shuffled = carousel.wallpaperIds.shuffled()
+              if (shuffled == carousel.wallpaperIds) {
+                shuffled = shuffled.drop(1) + shuffled.first()
+              }
+              carousel.copy(wallpaperIds = shuffled)
+            }
+          },
+        )
+      }
+    }
+  }
+
   fun deleteCarousel(carouselId: String) {
     deleteCarousels(setOf(carouselId))
   }

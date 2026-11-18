@@ -16,6 +16,7 @@
     <string name="carousels_empty_title">Nessun carosello</string>
     <string name="carousels_empty_body">Crea un carosello, aggiungi gli sfondi e assegnalo alla schermata Home o di blocco.</string>
     <string name="new_carousel">Nuovo carosello</string>
+    <string name="rename_carousel">Rinomina carosello</string>
     <string name="carousel_name">Nome</string>
     <string name="create">Crea</string>
     <string name="cancel">Annulla</string>
@@ -91,6 +92,7 @@
     <string name="no_times">Aggiungi almeno un orario.</string>
     <string name="carousel_empty_hint">Aggiungi sfondi al carosello prima di assegnarlo.</string>
     <string name="add">Aggiungi</string>
+    <string name="shuffle">Riordina</string>
     <string name="move_up">Sposta su</string>
     <string name="move_down">Sposta giù</string>
     <string name="remove">Rimuovi</string>

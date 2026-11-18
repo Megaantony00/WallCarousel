@@ -1,0 +1,5 @@
+- Swipe on the editor header to move to the previous or next wallpaper.
+- Save button at the bottom right in landscape.
+- Tap the carousel name to rename it.
+- Picker-style selection in "Add wallpapers", with select/deselect all.
+- Shuffle button to reorder a carousel randomly.

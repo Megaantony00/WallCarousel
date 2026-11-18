@@ -112,6 +112,7 @@ fun LibraryScreen(
       wallpaper = selected,
       viewModel = viewModel,
       onBack = { selectedId = null },
+      onNavigate = { selectedId = it },
     )
     return
   }
