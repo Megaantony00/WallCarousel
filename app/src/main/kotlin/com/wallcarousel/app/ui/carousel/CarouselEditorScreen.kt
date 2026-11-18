@@ -8,11 +8,9 @@ import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,7 +91,7 @@ import com.wallcarousel.app.data.model.Carousel
 import com.wallcarousel.app.data.model.Schedule
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
-import com.wallcarousel.app.ui.components.DragSelectOverlay
+import com.wallcarousel.app.ui.components.SelectionGestureLayer
 import com.wallcarousel.app.ui.components.SelectionSetSaver
 import com.wallcarousel.app.ui.components.formatTimeOfDay
 import com.wallcarousel.app.ui.components.rememberThumbnail
@@ -185,7 +183,22 @@ fun CarouselEditorScreen(
       val wide = maxWidth >= 840.dp
       if (wide) {
         Row(modifier = Modifier.fillMaxSize()) {
-          Box(modifier = Modifier.weight(1f)) {
+          SelectionGestureLayer(
+            selectionMode = selectionMode,
+            modifier = Modifier.weight(1f),
+            keyAt = { position -> listKeyAt(listState, position) },
+            onSelect = { id ->
+              if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+            },
+            onTap = { id ->
+              if (state.wallpaper(id) != null) {
+                selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+              }
+            },
+            onEdgeScroll = { dy ->
+              listState.dispatchRawDelta(dy)
+            },
+          ) {
             LazyColumn(
               state = listState,
               contentPadding = PaddingValues(24.dp),
@@ -200,27 +213,6 @@ fun CarouselEditorScreen(
                 selectionMode = selectionMode,
                 onAdd = { showAdd = true },
                 onEdit = onEditWallpaper,
-                onToggle = { id ->
-                  selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
-                },
-                onLongPress = { id -> selectedIds = selectedIds + id },
-              )
-            }
-            if (selectionMode) {
-              DragSelectOverlay(
-                modifier = Modifier.fillMaxSize(),
-                keyAt = { position -> listKeyAt(listState, position) },
-                onSelect = { id ->
-                  if (state.wallpaper(id) != null) selectedIds = selectedIds + id
-                },
-                onTap = { id ->
-                  if (state.wallpaper(id) != null) {
-                    selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
-                  }
-                },
-                onEdgeScroll = { dy ->
-                  listState.dispatchRawDelta(dy)
-                },
               )
             }
           }
@@ -240,7 +232,22 @@ fun CarouselEditorScreen(
           }
         }
       } else {
-        Box(modifier = Modifier.fillMaxSize()) {
+        SelectionGestureLayer(
+          selectionMode = selectionMode,
+          modifier = Modifier.fillMaxSize(),
+          keyAt = { position -> listKeyAt(listState, position) },
+          onSelect = { id ->
+            if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+          },
+          onTap = { id ->
+            if (state.wallpaper(id) != null) {
+              selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+            }
+          },
+          onEdgeScroll = { dy ->
+            listState.dispatchRawDelta(dy)
+          },
+        ) {
           LazyColumn(
             state = listState,
             contentPadding = PaddingValues(16.dp),
@@ -263,27 +270,6 @@ fun CarouselEditorScreen(
               selectionMode = selectionMode,
               onAdd = { showAdd = true },
               onEdit = onEditWallpaper,
-              onToggle = { id ->
-                selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
-              },
-              onLongPress = { id -> selectedIds = selectedIds + id },
-            )
-          }
-          if (selectionMode) {
-            DragSelectOverlay(
-              modifier = Modifier.fillMaxSize(),
-              keyAt = { position -> listKeyAt(listState, position) },
-              onSelect = { id ->
-                if (state.wallpaper(id) != null) selectedIds = selectedIds + id
-              },
-              onTap = { id ->
-                if (state.wallpaper(id) != null) {
-                  selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
-                }
-              },
-              onEdgeScroll = { dy ->
-                listState.dispatchRawDelta(dy)
-              },
             )
           }
         }
@@ -345,8 +331,6 @@ private fun LazyListScope.wallpaperItems(
   selectionMode: Boolean,
   onAdd: () -> Unit,
   onEdit: (String) -> Unit,
-  onToggle: (String) -> Unit,
-  onLongPress: (String) -> Unit,
 ) {
   item(key = "wallpapers_header") {
     Row(
@@ -403,9 +387,8 @@ private fun LazyListScope.wallpaperItems(
         canMoveUp = index > 0,
         canMoveDown = index < carousel.wallpaperIds.lastIndex,
         onClick = {
-          if (selectionMode) onToggle(wallpaperId) else onEdit(wallpaperId)
+          if (!selectionMode) onEdit(wallpaperId)
         },
-        onLongClick = { onLongPress(wallpaperId) },
         onMoveUp = { viewModel.moveWallpaper(carousel.id, wallpaperId, up = true) },
         onMoveDown = { viewModel.moveWallpaper(carousel.id, wallpaperId, up = false) },
         onEdit = { onEdit(wallpaperId) },
@@ -415,7 +398,6 @@ private fun LazyListScope.wallpaperItems(
   }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WallpaperRow(
   wallpaperName: String,
@@ -426,7 +408,6 @@ private fun WallpaperRow(
   canMoveUp: Boolean,
   canMoveDown: Boolean,
   onClick: () -> Unit,
-  onLongClick: () -> Unit,
   onMoveUp: () -> Unit,
   onMoveDown: () -> Unit,
   onEdit: () -> Unit,
@@ -436,7 +417,7 @@ private fun WallpaperRow(
     modifier = Modifier
       .fillMaxWidth()
       .clip(MaterialTheme.shapes.medium)
-      .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+      .clickable(onClick = onClick),
     colors = if (selected) {
       CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     } else {

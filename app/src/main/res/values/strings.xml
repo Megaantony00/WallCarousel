@@ -35,8 +35,14 @@
         <item quantity="one">This removes %d wallpaper from WallCarousel and from every carousel that uses it. The original photo in your gallery is not touched.</item>
         <item quantity="other">This removes %d wallpapers from WallCarousel and from every carousel that uses them. The original photos in your gallery are not touched.</item>
     </plurals>
+    <plurals name="delete_selected_carousels_body">
+        <item quantity="one">This removes %d carousel and clears any home or lock assignment that uses it. The wallpapers stay in the library.</item>
+        <item quantity="other">This removes %d carousels and clears any home or lock assignment that uses them. The wallpapers stay in the library.</item>
+    </plurals>
     <string name="add_to_carousel">Add to carousel</string>
     <string name="no_carousels_body">Create a carousel in the Carousels section first.</string>
+    <string name="all_already_added">Already in this carousel</string>
+    <string name="to_add_count">%1$d to add</string>
     <string name="remove_selected">Remove selected</string>
     <string name="back">Back</string>
 

@@ -9,7 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -52,6 +53,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -65,13 +67,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
-import com.wallcarousel.app.data.model.Carousel
 import com.wallcarousel.app.data.model.Wallpaper
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
-import com.wallcarousel.app.ui.components.DragSelectOverlay
 import com.wallcarousel.app.ui.components.EmptyState
 import com.wallcarousel.app.ui.components.ScreenHeader
+import com.wallcarousel.app.ui.components.SelectionGestureLayer
 import com.wallcarousel.app.ui.components.SelectionSetSaver
 import com.wallcarousel.app.ui.components.rememberThumbnail
 
@@ -183,7 +184,22 @@ fun LibraryScreen(
           )
         }
       } else {
-        Box(modifier = Modifier.fillMaxSize()) {
+        SelectionGestureLayer(
+          selectionMode = selectionMode,
+          modifier = Modifier.fillMaxSize(),
+          keyAt = { position -> gridKeyAt(gridState, position) },
+          onSelect = { id ->
+            if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+          },
+          onTap = { id ->
+            if (state.wallpaper(id) != null) {
+              selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+            }
+          },
+          onEdgeScroll = { dy ->
+            gridState.dispatchRawDelta(dy)
+          },
+        ) {
           LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(minSize = 180.dp),
@@ -198,36 +214,10 @@ fun LibraryScreen(
                 imageFile = viewModel::imageFile,
                 selected = wallpaper.id in selectedIds,
                 onClick = {
-                  if (selectionMode) {
-                    selectedIds = if (wallpaper.id in selectedIds) {
-                      selectedIds - wallpaper.id
-                    } else {
-                      selectedIds + wallpaper.id
-                    }
-                  } else {
-                    selectedId = wallpaper.id
-                  }
+                  if (!selectionMode) selectedId = wallpaper.id
                 },
-                onLongClick = { selectedIds = selectedIds + wallpaper.id },
               )
             }
-          }
-          if (selectionMode) {
-            DragSelectOverlay(
-              modifier = Modifier.fillMaxSize(),
-              keyAt = { position -> gridKeyAt(gridState, position) },
-              onSelect = { id ->
-                if (state.wallpaper(id) != null) selectedIds = selectedIds + id
-              },
-              onTap = { id ->
-                if (state.wallpaper(id) != null) {
-                  selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
-                }
-              },
-              onEdgeScroll = { dy ->
-                gridState.dispatchRawDelta(dy)
-              },
-            )
           }
         }
       }
@@ -263,7 +253,8 @@ fun LibraryScreen(
 
   if (showAddToCarousel) {
     AddToCarouselDialog(
-      carousels = state.carousels,
+      state = state,
+      selectedIds = selectedIds,
       onDismiss = { showAddToCarousel = false },
       onSelect = { carouselId ->
         viewModel.addWallpapersToCarousel(carouselId, selectedIds.toList())
@@ -281,7 +272,6 @@ private fun WallpaperCard(
   imageFile: (String) -> java.io.File,
   selected: Boolean,
   onClick: () -> Unit,
-  onLongClick: () -> Unit,
 ) {
   val variant = wallpaper.previewVariant()
   val resolution = variant?.let { "${it.width}×${it.height}" }
@@ -290,7 +280,7 @@ private fun WallpaperCard(
     modifier = Modifier
       .clip(MaterialTheme.shapes.medium)
       .semantics { this.selected = selected }
-      .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+      .clickable(onClick = onClick),
   ) {
     Box(
       modifier = Modifier
@@ -359,7 +349,8 @@ private fun WallpaperCard(
 
 @Composable
 private fun AddToCarouselDialog(
-  carousels: List<Carousel>,
+  state: AppState,
+  selectedIds: Set<String>,
   onDismiss: () -> Unit,
   onSelect: (String) -> Unit,
 ) {
@@ -367,20 +358,73 @@ private fun AddToCarouselDialog(
     onDismissRequest = onDismiss,
     title = { Text(stringResource(R.string.add_to_carousel)) },
     text = {
-      if (carousels.isEmpty()) {
+      if (state.carousels.isEmpty()) {
         Text(stringResource(R.string.no_carousels_body))
       } else {
-        LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-          lazyItems(carousels, key = { it.id }) { carousel ->
-            TextButton(
-              onClick = { onSelect(carousel.id) },
-              modifier = Modifier.fillMaxWidth(),
+        LazyColumn(
+          modifier = Modifier.heightIn(max = 420.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          lazyItems(state.carousels, key = { it.id }) { carousel ->
+            val missing = selectedIds.count { it !in carousel.wallpaperIds }
+            val enabled = missing > 0
+            Surface(
+              shape = MaterialTheme.shapes.medium,
+              color = MaterialTheme.colorScheme.surfaceVariant,
+              modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium)
+                .alpha(if (enabled) 1f else 0.55f)
+                .clickable(enabled = enabled) { onSelect(carousel.id) },
             ) {
-              Text(
-                text = carousel.name,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-              )
+              Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+              ) {
+                Box(
+                  modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                  contentAlignment = Alignment.Center,
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                  )
+                }
+                Column(
+                  modifier = Modifier.weight(1f),
+                  verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                  Text(
+                    text = carousel.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                  )
+                  Text(
+                    text = if (enabled) {
+                      stringResource(R.string.to_add_count, missing)
+                    } else {
+                      stringResource(R.string.all_already_added)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
+                Icon(
+                  imageVector = if (enabled) Icons.Default.Add else Icons.Default.Check,
+                  contentDescription = null,
+                  tint = if (enabled) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                  },
+                )
+              }
             }
           }
         }

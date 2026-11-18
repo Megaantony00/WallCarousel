@@ -36,8 +36,15 @@
         <item quantity="many">Rimuove %d sfondi da WallCarousel e da ogni carosello che li usa. Le foto originali nella galleria non vengono toccate.</item>
         <item quantity="other">Rimuove %d sfondi da WallCarousel e da ogni carosello che li usa. Le foto originali nella galleria non vengono toccate.</item>
     </plurals>
+    <plurals name="delete_selected_carousels_body">
+        <item quantity="one">Rimuove %d carosello e cancella l’assegnazione Home o Blocco che lo usa. Gli sfondi restano nella libreria.</item>
+        <item quantity="many">Rimuove %d caroselli e cancella le assegnazioni Home o Blocco che li usano. Gli sfondi restano nella libreria.</item>
+        <item quantity="other">Rimuove %d caroselli e cancella le assegnazioni Home o Blocco che li usano. Gli sfondi restano nella libreria.</item>
+    </plurals>
     <string name="add_to_carousel">Aggiungi al carosello</string>
     <string name="no_carousels_body">Crea prima un carosello nella sezione Caroselli.</string>
+    <string name="all_already_added">Già in questo carosello</string>
+    <string name="to_add_count">%1$d da aggiungere</string>
     <string name="remove_selected">Rimuovi selezionati</string>
     <string name="back">Indietro</string>
 

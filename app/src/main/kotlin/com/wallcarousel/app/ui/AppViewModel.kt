@@ -200,19 +200,47 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   fun deleteCarousel(carouselId: String) {
+    deleteCarousels(setOf(carouselId))
+  }
+
+  fun deleteCarousels(carouselIds: Set<String>) {
+    if (carouselIds.isEmpty()) return
     viewModelScope.launch {
       val updated = repository.update { state ->
         state.copy(
-          carousels = state.carousels.filterNot { it.id == carouselId },
+          carousels = state.carousels.filterNot { it.id in carouselIds },
           home = state.home.let { config ->
-            if (config.carouselId == carouselId) config.copy(carouselId = null, schedule = Schedule()) else config
+            if (config.carouselId in carouselIds) {
+              config.copy(carouselId = null, schedule = Schedule(), cursor = 0)
+            } else {
+              config
+            }
           },
           lock = state.lock.let { config ->
-            if (config.carouselId == carouselId) config.copy(carouselId = null, schedule = Schedule()) else config
+            if (config.carouselId in carouselIds) {
+              config.copy(carouselId = null, schedule = Schedule(), cursor = 0)
+            } else {
+              config
+            }
           },
         )
       }
       container.scheduler.sync(updated)
+    }
+  }
+
+  fun moveCarousel(carouselId: String, up: Boolean) {
+    viewModelScope.launch {
+      repository.update { state ->
+        val carousels = state.carousels.toMutableList()
+        val index = carousels.indexOfFirst { it.id == carouselId }
+        if (index < 0) return@update state
+        val target = if (up) index - 1 else index + 1
+        if (target !in carousels.indices) return@update state
+        val item = carousels.removeAt(index)
+        carousels.add(target, item)
+        state.copy(carousels = carousels)
+      }
     }
   }
 

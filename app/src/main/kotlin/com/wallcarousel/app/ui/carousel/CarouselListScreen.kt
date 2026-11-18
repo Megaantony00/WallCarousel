@@ -4,6 +4,7 @@ package com.wallcarousel.app.ui.carousel
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,14 +15,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -36,18 +46,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
 import com.wallcarousel.app.data.model.Carousel
 import com.wallcarousel.app.ui.AppViewModel
+import com.wallcarousel.app.ui.components.ConfirmDialog
 import com.wallcarousel.app.ui.components.EmptyState
 import com.wallcarousel.app.ui.components.ScreenHeader
+import com.wallcarousel.app.ui.components.SelectionGestureLayer
+import com.wallcarousel.app.ui.components.SelectionSetSaver
 import com.wallcarousel.app.ui.components.rememberThumbnail
 import java.io.File
 
@@ -60,14 +76,32 @@ fun CarouselListScreen(
   onOpenConsumed: () -> Unit = {},
 ) {
   var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+  var selectedIds by rememberSaveable(stateSaver = SelectionSetSaver) {
+    mutableStateOf(emptySet())
+  }
+  var showDeleteSelected by rememberSaveable { mutableStateOf(false) }
   val selected = state.carousel(selectedId)
+  val selectionMode = selectedIds.isNotEmpty()
+  val allIds = state.carousels.map { it.id }
+  val allSelected = allIds.isNotEmpty() && selectedIds.containsAll(allIds)
+  val listState = rememberLazyListState()
+  val selectedCarousel = if (selectedIds.size == 1) {
+    state.carousels.firstOrNull { it.id in selectedIds }
+  } else {
+    null
+  }
+  val selectedIndex = selectedCarousel?.let { state.carousels.indexOf(it) } ?: -1
+  val canMoveUp = selectedCarousel != null && selectedIndex > 0
+  val canMoveDown = selectedCarousel != null && selectedIndex in 0 until state.carousels.lastIndex
 
   LaunchedEffect(openCarouselId) {
     if (openCarouselId != null) {
+      selectedIds = emptySet()
       selectedId = openCarouselId
       onOpenConsumed()
     }
   }
+  BackHandler(enabled = selectionMode) { selectedIds = emptySet() }
 
   if (selected != null) {
     BackHandler { selectedId = null }
@@ -85,18 +119,58 @@ fun CarouselListScreen(
 
   Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
-      ScreenHeader(
-        title = stringResource(R.string.carousels_title),
-        subtitle = if (state.carousels.isEmpty()) {
-          null
-        } else {
-          pluralStringResource(
-            R.plurals.carousels_count,
-            state.carousels.size,
-            state.carousels.size,
-          )
-        },
-      )
+      if (selectionMode) {
+        ScreenHeader(
+          title = pluralStringResource(
+            R.plurals.selected_count,
+            selectedIds.size,
+            selectedIds.size,
+          ),
+          actions = {
+            TextButton(
+              onClick = {
+                selectedIds = if (allSelected) emptySet() else allIds.toSet()
+              },
+            ) {
+              Text(stringResource(if (allSelected) R.string.deselect_all else R.string.select_all))
+            }
+            IconButton(
+              onClick = { selectedCarousel?.let { viewModel.moveCarousel(it.id, up = true) } },
+              enabled = canMoveUp,
+            ) {
+              Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.move_up))
+            }
+            IconButton(
+              onClick = { selectedCarousel?.let { viewModel.moveCarousel(it.id, up = false) } },
+              enabled = canMoveDown,
+            ) {
+              Icon(
+                Icons.Default.KeyboardArrowDown,
+                contentDescription = stringResource(R.string.move_down),
+              )
+            }
+            IconButton(onClick = { showDeleteSelected = true }) {
+              Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
+            }
+            IconButton(onClick = { selectedIds = emptySet() }) {
+              Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+            }
+          },
+        )
+      } else {
+        ScreenHeader(
+          title = stringResource(R.string.carousels_title),
+          subtitle = if (state.carousels.isEmpty()) {
+            null
+          } else {
+            pluralStringResource(
+              R.plurals.carousels_count,
+              state.carousels.size,
+              state.carousels.size,
+            )
+          },
+        )
+      }
 
       if (state.carousels.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -108,24 +182,43 @@ fun CarouselListScreen(
           )
         }
       } else {
-        LazyColumn(
-          contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 120.dp),
-          verticalArrangement = Arrangement.spacedBy(12.dp),
+        SelectionGestureLayer(
+          selectionMode = selectionMode,
           modifier = Modifier.fillMaxSize(),
+          keyAt = { position -> carouselListKeyAt(listState, position) },
+          onSelect = { id ->
+            if (state.carousel(id) != null) selectedIds = selectedIds + id
+          },
+          onTap = { id ->
+            if (state.carousel(id) != null) {
+              selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+            }
+          },
+          onEdgeScroll = { dy ->
+            listState.dispatchRawDelta(dy)
+          },
         ) {
-          items(items = state.carousels, key = { it.id }) { carousel ->
-            CarouselCard(
-              carousel = carousel,
-              state = state,
-              imageFile = viewModel::imageFile,
-              onClick = { selectedId = carousel.id },
-            )
+          LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize(),
+          ) {
+            items(items = state.carousels, key = { it.id }) { carousel ->
+              CarouselCard(
+                carousel = carousel,
+                state = state,
+                imageFile = viewModel::imageFile,
+                selected = carousel.id in selectedIds,
+                onClick = { if (!selectionMode) selectedId = carousel.id },
+              )
+            }
           }
         }
       }
     }
 
-    if (state.carousels.isNotEmpty()) {
+    if (state.carousels.isNotEmpty() && !selectionMode) {
       ExtendedFloatingActionButton(
         onClick = { showCreate = true },
         icon = { Icon(Icons.Default.Add, contentDescription = null) },
@@ -144,6 +237,24 @@ fun CarouselListScreen(
       },
     )
   }
+
+  if (showDeleteSelected) {
+    ConfirmDialog(
+      title = stringResource(R.string.delete_selected),
+      body = pluralStringResource(
+        R.plurals.delete_selected_carousels_body,
+        selectedIds.size,
+        selectedIds.size,
+      ),
+      confirmLabel = stringResource(R.string.delete),
+      onConfirm = {
+        viewModel.deleteCarousels(selectedIds)
+        selectedIds = emptySet()
+        showDeleteSelected = false
+      },
+      onDismiss = { showDeleteSelected = false },
+    )
+  }
 }
 
 @Composable
@@ -151,9 +262,21 @@ private fun CarouselCard(
   carousel: Carousel,
   state: AppState,
   imageFile: (String) -> File,
+  selected: Boolean,
   onClick: () -> Unit,
 ) {
-  Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+  Card(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clip(MaterialTheme.shapes.medium)
+      .semantics { this.selected = selected }
+      .clickable(onClick = onClick),
+    colors = if (selected) {
+      CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    } else {
+      CardDefaults.cardColors()
+    },
+  ) {
     Row(
       modifier = Modifier.padding(12.dp),
       horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -201,9 +324,22 @@ private fun CarouselCard(
           }
         }
       }
+      if (selected) {
+        Icon(
+          imageVector = Icons.Default.Check,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.primary,
+        )
+      }
     }
   }
 }
+
+private fun carouselListKeyAt(listState: LazyListState, position: Offset): String? =
+  listState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+    position.y >= item.offset.toFloat() &&
+      position.y <= (item.offset + item.size).toFloat()
+  }?.key as? String
 
 @Composable
 private fun AssignmentBadge(text: String) {
