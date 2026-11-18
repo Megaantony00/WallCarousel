@@ -105,8 +105,8 @@
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="dynamic_color">Dynamic color</string>
-    <string name="dynamic_color_summary">Use wallpaper-based colors on Android 12 and later.</string>
+    <string name="dynamic_color">Dynamic palette</string>
+    <string name="dynamic_color_summary">Use the Home wallpaper colors for the app palette on Android 12 and later.</string>
     <string name="pre_render_next">Pre-render next wallpaper</string>
     <string name="pre_render_next_summary">Prepares the next wallpaper in the background to change faster. Uses more CPU, memory and battery. No extra permissions.</string>
     <string name="data">Data</string>

@@ -1,0 +1,1 @@
+- Renamed "Dynamic color" to "Dynamic palette" and clarified that it follows the Home wallpaper colors.

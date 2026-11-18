@@ -1,0 +1,1 @@
+- “Colori dinamici” è ora “Palette dinamica”, con sottotitolo più chiaro: segue i colori dello sfondo della Home.
