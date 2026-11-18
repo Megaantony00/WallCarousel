@@ -8,9 +8,11 @@ import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,7 +29,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +39,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -45,6 +50,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -53,7 +59,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -70,6 +75,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -86,6 +93,8 @@ import com.wallcarousel.app.data.model.Carousel
 import com.wallcarousel.app.data.model.Schedule
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
+import com.wallcarousel.app.ui.components.DragSelectOverlay
+import com.wallcarousel.app.ui.components.SelectionSetSaver
 import com.wallcarousel.app.ui.components.formatTimeOfDay
 import com.wallcarousel.app.ui.components.rememberThumbnail
 import java.io.File
@@ -97,11 +106,17 @@ fun CarouselEditorScreen(
   carousel: Carousel,
   viewModel: AppViewModel,
   onBack: () -> Unit,
+  onEditWallpaper: (String) -> Unit,
 ) {
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   var showAdd by rememberSaveable { mutableStateOf(false) }
-  var renameTargetId by rememberSaveable { mutableStateOf<String?>(null) }
-  val renameTarget = state.wallpaper(renameTargetId)
+  var selectedIds by rememberSaveable(stateSaver = SelectionSetSaver) {
+    mutableStateOf(emptySet())
+  }
+  val selectionMode = selectedIds.isNotEmpty()
+  val carouselIds = carousel.wallpaperIds.filter { state.wallpaper(it) != null }
+  val allSelected = carouselIds.isNotEmpty() && selectedIds.containsAll(carouselIds)
+  val listState = rememberLazyListState()
   var scheduleTargetName by rememberSaveable { mutableStateOf<String?>(null) }
   val scheduleTarget = scheduleTargetName?.let { name ->
     ApplyTarget.entries.firstOrNull { it.name == name }
@@ -111,25 +126,58 @@ fun CarouselEditorScreen(
     ActivityResultContracts.RequestPermission(),
   ) { }
 
-  BackHandler(onBack = onBack)
+  BackHandler {
+    if (selectionMode) selectedIds = emptySet() else onBack()
+  }
 
   Column(modifier = Modifier.fillMaxSize()) {
     Row(
       modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      IconButton(onClick = onBack) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-      }
-      Text(
-        text = carousel.name,
-        style = MaterialTheme.typography.titleLarge,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-      )
-      IconButton(onClick = { confirmDelete = true }) {
-        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_carousel))
+      if (selectionMode) {
+        IconButton(onClick = { selectedIds = emptySet() }) {
+          Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+        }
+        Text(
+          text = pluralStringResource(
+            R.plurals.selected_count,
+            selectedIds.size,
+            selectedIds.size,
+          ),
+          style = MaterialTheme.typography.titleLarge,
+          maxLines = 1,
+          modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+        )
+        TextButton(
+          onClick = {
+            selectedIds = if (allSelected) emptySet() else carouselIds.toSet()
+          },
+        ) {
+          Text(stringResource(if (allSelected) R.string.deselect_all else R.string.select_all))
+        }
+        TextButton(
+          onClick = {
+            viewModel.removeWallpapersFromCarousel(carousel.id, selectedIds)
+            selectedIds = emptySet()
+          },
+        ) {
+          Text(stringResource(R.string.remove_selected))
+        }
+      } else {
+        IconButton(onClick = onBack) {
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+        }
+        Text(
+          text = carousel.name,
+          style = MaterialTheme.typography.titleLarge,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+        )
+        IconButton(onClick = { confirmDelete = true }) {
+          Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_carousel))
+        }
       }
     }
 
@@ -137,18 +185,44 @@ fun CarouselEditorScreen(
       val wide = maxWidth >= 840.dp
       if (wide) {
         Row(modifier = Modifier.fillMaxSize()) {
-          LazyColumn(
-            contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.weight(1f),
-          ) {
-            wallpaperItems(
-              state,
-              carousel,
-              viewModel,
-              onAdd = { showAdd = true },
-              onRename = { renameTargetId = it },
-            )
+          Box(modifier = Modifier.weight(1f)) {
+            LazyColumn(
+              state = listState,
+              contentPadding = PaddingValues(24.dp),
+              verticalArrangement = Arrangement.spacedBy(8.dp),
+              modifier = Modifier.fillMaxSize(),
+            ) {
+              wallpaperItems(
+                state,
+                carousel,
+                viewModel,
+                selectedIds = selectedIds,
+                selectionMode = selectionMode,
+                onAdd = { showAdd = true },
+                onEdit = onEditWallpaper,
+                onToggle = { id ->
+                  selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+                },
+                onLongPress = { id -> selectedIds = selectedIds + id },
+              )
+            }
+            if (selectionMode) {
+              DragSelectOverlay(
+                modifier = Modifier.fillMaxSize(),
+                keyAt = { position -> listKeyAt(listState, position) },
+                onSelect = { id ->
+                  if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+                },
+                onTap = { id ->
+                  if (state.wallpaper(id) != null) {
+                    selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+                  }
+                },
+                onEdgeScroll = { dy ->
+                  listState.dispatchRawDelta(dy)
+                },
+              )
+            }
           }
           Column(
             modifier = Modifier
@@ -166,26 +240,52 @@ fun CarouselEditorScreen(
           }
         }
       } else {
-        LazyColumn(
-          contentPadding = PaddingValues(16.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.fillMaxSize(),
-        ) {
-          item(key = "assignments") {
-            AssignmentPanel(
-              state = state,
-              carousel = carousel,
-              viewModel = viewModel,
-              onSchedule = { scheduleTargetName = it.name },
+        Box(modifier = Modifier.fillMaxSize()) {
+          LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize(),
+          ) {
+            item(key = "assignments") {
+              AssignmentPanel(
+                state = state,
+                carousel = carousel,
+                viewModel = viewModel,
+                onSchedule = { scheduleTargetName = it.name },
+              )
+            }
+            wallpaperItems(
+              state,
+              carousel,
+              viewModel,
+              selectedIds = selectedIds,
+              selectionMode = selectionMode,
+              onAdd = { showAdd = true },
+              onEdit = onEditWallpaper,
+              onToggle = { id ->
+                selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+              },
+              onLongPress = { id -> selectedIds = selectedIds + id },
             )
           }
-          wallpaperItems(
-            state,
-            carousel,
-            viewModel,
-            onAdd = { showAdd = true },
-            onRename = { renameTargetId = it },
-          )
+          if (selectionMode) {
+            DragSelectOverlay(
+              modifier = Modifier.fillMaxSize(),
+              keyAt = { position -> listKeyAt(listState, position) },
+              onSelect = { id ->
+                if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+              },
+              onTap = { id ->
+                if (state.wallpaper(id) != null) {
+                  selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+                }
+              },
+              onEdgeScroll = { dy ->
+                listState.dispatchRawDelta(dy)
+              },
+            )
+          }
         }
       }
     }
@@ -223,40 +323,6 @@ fun CarouselEditorScreen(
     )
   }
 
-  if (renameTarget != null) {
-    var name by remember(renameTarget.id) { mutableStateOf(renameTarget.name) }
-    AlertDialog(
-      onDismissRequest = { renameTargetId = null },
-      title = { Text(stringResource(R.string.rename_wallpaper)) },
-      text = {
-        OutlinedTextField(
-          value = name,
-          onValueChange = { name = it },
-          label = { Text(stringResource(R.string.wallpaper_name_label)) },
-          supportingText = {
-            Text(stringResource(R.string.wallpaper_source_name, renameTarget.sourceName))
-          },
-          singleLine = true,
-        )
-      },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            viewModel.renameWallpaper(renameTarget.id, name)
-            renameTargetId = null
-          },
-        ) {
-          Text(stringResource(R.string.save))
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = { renameTargetId = null }) {
-          Text(stringResource(R.string.cancel))
-        }
-      },
-    )
-  }
-
   if (confirmDelete) {
     ConfirmDialog(
       title = stringResource(R.string.delete_carousel),
@@ -275,8 +341,12 @@ private fun LazyListScope.wallpaperItems(
   state: AppState,
   carousel: Carousel,
   viewModel: AppViewModel,
+  selectedIds: Set<String>,
+  selectionMode: Boolean,
   onAdd: () -> Unit,
-  onRename: (String) -> Unit,
+  onEdit: (String) -> Unit,
+  onToggle: (String) -> Unit,
+  onLongPress: (String) -> Unit,
 ) {
   item(key = "wallpapers_header") {
     Row(
@@ -328,30 +398,51 @@ private fun LazyListScope.wallpaperItems(
         wallpaperName = wallpaper.displayName(),
         imageFile = wallpaper.previewVariant()?.let { viewModel.imageFile(it.fileName) },
         position = index + 1,
+        selected = wallpaperId in selectedIds,
+        selectionMode = selectionMode,
         canMoveUp = index > 0,
         canMoveDown = index < carousel.wallpaperIds.lastIndex,
+        onClick = {
+          if (selectionMode) onToggle(wallpaperId) else onEdit(wallpaperId)
+        },
+        onLongClick = { onLongPress(wallpaperId) },
         onMoveUp = { viewModel.moveWallpaper(carousel.id, wallpaperId, up = true) },
         onMoveDown = { viewModel.moveWallpaper(carousel.id, wallpaperId, up = false) },
-        onRename = { onRename(wallpaperId) },
+        onEdit = { onEdit(wallpaperId) },
         onRemove = { viewModel.removeWallpaperFromCarousel(carousel.id, wallpaperId) },
       )
     }
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WallpaperRow(
   wallpaperName: String,
   imageFile: File?,
   position: Int,
+  selected: Boolean,
+  selectionMode: Boolean,
   canMoveUp: Boolean,
   canMoveDown: Boolean,
+  onClick: () -> Unit,
+  onLongClick: () -> Unit,
   onMoveUp: () -> Unit,
   onMoveDown: () -> Unit,
-  onRename: () -> Unit,
+  onEdit: () -> Unit,
   onRemove: () -> Unit,
 ) {
-  Card(modifier = Modifier.fillMaxWidth()) {
+  Card(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clip(MaterialTheme.shapes.medium)
+      .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+    colors = if (selected) {
+      CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    } else {
+      CardDefaults.cardColors()
+    },
+  ) {
     Row(
       modifier = Modifier.padding(8.dp),
       verticalAlignment = Alignment.CenterVertically,
@@ -372,6 +463,19 @@ private fun WallpaperRow(
             modifier = Modifier.fillMaxSize(),
           )
         }
+        if (selected) {
+          Box(
+            modifier = Modifier
+              .fillMaxSize()
+              .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f)),
+          )
+          Icon(
+            imageVector = Icons.Default.Check,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.align(Alignment.Center).size(28.dp),
+          )
+        }
       }
       Text(
         text = "$position.",
@@ -385,17 +489,19 @@ private fun WallpaperRow(
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.weight(1f),
       )
-      IconButton(onClick = onRename) {
-        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.rename_wallpaper))
-      }
-      IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-        Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.move_up))
-      }
-      IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.move_down))
-      }
-      IconButton(onClick = onRemove) {
-        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove))
+      if (!selectionMode) {
+        IconButton(onClick = onEdit) {
+          Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_wallpaper))
+        }
+        IconButton(onClick = onMoveUp, enabled = canMoveUp) {
+          Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.move_up))
+        }
+        IconButton(onClick = onMoveDown, enabled = canMoveDown) {
+          Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.move_down))
+        }
+        IconButton(onClick = onRemove) {
+          Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove))
+        }
       }
     }
   }
@@ -512,6 +618,12 @@ private fun TargetAssignmentCard(
     }
   }
 }
+
+private fun listKeyAt(listState: LazyListState, position: Offset): String? =
+  listState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+    position.y >= item.offset.toFloat() &&
+      position.y <= (item.offset + item.size).toFloat()
+  }?.key as? String
 
 @Composable
 private fun intervalSummary(minutes: Int): String {

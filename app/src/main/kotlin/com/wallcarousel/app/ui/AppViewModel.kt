@@ -155,29 +155,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
   }
 
-  fun renameWallpaper(wallpaperId: String, name: String) {
-    viewModelScope.launch {
-      repository.update { current ->
-        current.copy(
-          wallpapers = current.wallpapers.map { wallpaper ->
-            if (wallpaper.id == wallpaperId) wallpaper.copy(name = name.trim()) else wallpaper
-          },
-        )
-      }
-    }
+  fun deleteWallpaper(wallpaperId: String) {
+    deleteWallpapers(setOf(wallpaperId))
   }
 
-  fun deleteWallpaper(wallpaperId: String) {
+  fun deleteWallpapers(wallpaperIds: Set<String>) {
+    if (wallpaperIds.isEmpty()) return
     viewModelScope.launch {
       val current = repository.ensureLoaded()
-      val wallpaper = current.wallpaper(wallpaperId) ?: return@launch
-      val files = listOfNotNull(wallpaper.portrait, wallpaper.landscape).map { it.fileName }
+      val files = current.wallpapers
+        .filter { it.id in wallpaperIds }
+        .flatMap { listOfNotNull(it.portrait, it.landscape) }
+        .map { it.fileName }
+        .distinct()
 
       val updated = repository.update { state ->
         state.copy(
-          wallpapers = state.wallpapers.filterNot { it.id == wallpaperId },
+          wallpapers = state.wallpapers.filterNot { it.id in wallpaperIds },
           carousels = state.carousels.map { carousel ->
-            carousel.copy(wallpaperIds = carousel.wallpaperIds.filterNot { it == wallpaperId })
+            carousel.copy(wallpaperIds = carousel.wallpaperIds.filterNot { it in wallpaperIds })
           },
         )
       }
@@ -238,6 +234,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   fun removeWallpaperFromCarousel(carouselId: String, wallpaperId: String) {
+    removeWallpapersFromCarousel(carouselId, setOf(wallpaperId))
+  }
+
+  fun removeWallpapersFromCarousel(carouselId: String, wallpaperIds: Set<String>) {
+    if (wallpaperIds.isEmpty()) return
     viewModelScope.launch {
       repository.update { state ->
         state.copy(
@@ -245,7 +246,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             if (carousel.id != carouselId) {
               carousel
             } else {
-              carousel.copy(wallpaperIds = carousel.wallpaperIds.filterNot { it == wallpaperId })
+              carousel.copy(wallpaperIds = carousel.wallpaperIds.filterNot { it in wallpaperIds })
             }
           },
         )

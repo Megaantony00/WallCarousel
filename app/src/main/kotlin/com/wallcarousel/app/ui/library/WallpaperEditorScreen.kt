@@ -76,6 +76,7 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -135,6 +136,7 @@ fun WallpaperEditorScreen(
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   var showGrid by rememberSaveable(wallpaper.id) { mutableStateOf(false) }
   var pendingChange by remember { mutableStateOf<PendingChange?>(null) }
+  val focusManager = LocalFocusManager.current
   val addLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.PickVisualMedia(),
   ) { uri ->
@@ -149,6 +151,7 @@ fun WallpaperEditorScreen(
     stringResource(R.string.wallpaper_default_name)
   }
   val saveAll: () -> Unit = {
+    focusManager.clearFocus()
     if (draft != null || draftName.trim() != wallpaper.name) {
       viewModel.updateWallpaper(wallpaper.id, draftName, orientation, draft)
     }

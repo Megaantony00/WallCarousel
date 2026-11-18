@@ -21,19 +21,27 @@
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="wallpaper_name_label">Name</string>
-    <string name="rename_wallpaper">Rename wallpaper</string>
+    <string name="edit_wallpaper">Edit wallpaper</string>
     <string name="wallpaper_source_name">Suggested name: %1$s</string>
     <string name="unsaved_changes_title">Unsaved changes</string>
     <string name="unsaved_changes_body">Save your changes before continuing?</string>
     <string name="discard_changes">Discard changes</string>
     <string name="delete">Delete</string>
+    <string name="close">Close</string>
+    <string name="select_all">Select all</string>
+    <string name="deselect_all">Deselect all</string>
+    <string name="delete_selected">Delete selected</string>
+    <plurals name="delete_selected_body">
+        <item quantity="one">This removes %d wallpaper from WallCarousel and from every carousel that uses it. The original photo in your gallery is not touched.</item>
+        <item quantity="other">This removes %d wallpapers from WallCarousel and from every carousel that uses them. The original photos in your gallery are not touched.</item>
+    </plurals>
+    <string name="add_to_carousel">Add to carousel</string>
+    <string name="no_carousels_body">Create a carousel in the Carousels section first.</string>
+    <string name="remove_selected">Remove selected</string>
     <string name="back">Back</string>
 
     <string name="orientation_portrait">Portrait</string>
     <string name="orientation_landscape">Landscape</string>
-    <string name="orientation_both">Portrait and landscape</string>
-    <string name="wallpaper_not_in_carousel">Not in a carousel</string>
-    <string name="wallpaper_carousel_more">%1$s +%2$d</string>
     <string name="wallpaper_preview">Wallpaper preview</string>
     <string name="no_preview">No preview available</string>
     <string name="drag_focus_hint">Drag with one finger to move, pinch with two to zoom. The grid is only a preview aid.</string>
@@ -61,7 +69,7 @@
     <string name="use_for_lock">Use for lock</string>
     <string name="schedule_title">Schedule · %1$s</string>
     <string name="schedule_manual">Manual</string>
-    <string name="schedule_interval">Every few minutes</string>
+    <string name="schedule_interval">At intervals</string>
     <string name="schedule_daily">At specific times</string>
     <string name="schedule_daily_summary">At %1$s</string>
     <string name="schedule_wake">On every unlock</string>
@@ -140,6 +148,10 @@
     <plurals name="storage_summary">
         <item quantity="one">%1$d wallpaper · %2$s</item>
         <item quantity="other">%1$d wallpapers · %2$s</item>
+    </plurals>
+    <plurals name="selected_count">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
     </plurals>
     <plurals name="schedule_interval_minutes_summary">
         <item quantity="one">Every minute</item>

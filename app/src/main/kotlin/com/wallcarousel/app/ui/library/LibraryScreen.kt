@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.wallcarousel.app.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,18 +18,31 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items as lazyItems
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -35,22 +52,27 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
+import com.wallcarousel.app.data.model.Carousel
 import com.wallcarousel.app.data.model.Wallpaper
 import com.wallcarousel.app.ui.AppViewModel
+import com.wallcarousel.app.ui.components.ConfirmDialog
+import com.wallcarousel.app.ui.components.DragSelectOverlay
 import com.wallcarousel.app.ui.components.EmptyState
 import com.wallcarousel.app.ui.components.ScreenHeader
+import com.wallcarousel.app.ui.components.SelectionSetSaver
 import com.wallcarousel.app.ui.components.rememberThumbnail
 
 @Composable
@@ -58,15 +80,34 @@ fun LibraryScreen(
   state: AppState,
   viewModel: AppViewModel,
   onEditorActive: (Boolean) -> Unit = {},
+  openWallpaperId: String? = null,
+  onOpenConsumed: () -> Unit = {},
 ) {
   var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+  var selectedIds by rememberSaveable(stateSaver = SelectionSetSaver) {
+    mutableStateOf(emptySet())
+  }
+  var showDeleteSelected by rememberSaveable { mutableStateOf(false) }
+  var showAddToCarousel by rememberSaveable { mutableStateOf(false) }
   val selected = state.wallpaper(selectedId)
+  val selectionMode = selectedIds.isNotEmpty()
+  val allIds = state.wallpapers.map { it.id }
+  val allSelected = allIds.isNotEmpty() && selectedIds.containsAll(allIds)
+  val gridState = rememberLazyGridState()
 
+  LaunchedEffect(openWallpaperId) {
+    if (openWallpaperId != null) {
+      selectedIds = emptySet()
+      selectedId = openWallpaperId
+      onOpenConsumed()
+    }
+  }
   LaunchedEffect(selected != null) { onEditorActive(selected != null) }
   DisposableEffect(Unit) { onDispose { onEditorActive(false) } }
+  BackHandler(enabled = selectionMode) { selectedIds = emptySet() }
 
   if (selected != null) {
-    androidx.activity.compose.BackHandler { selectedId = null }
+    BackHandler { selectedId = null }
     WallpaperEditorScreen(
       state = state,
       wallpaper = selected,
@@ -84,28 +125,53 @@ fun LibraryScreen(
   val launchPicker = {
     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
   }
-  val carouselsByWallpaper = buildMap<String, MutableList<String>> {
-    state.carousels.forEach { carousel ->
-      carousel.wallpaperIds.forEach { wallpaperId ->
-        getOrPut(wallpaperId) { mutableListOf() }.add(carousel.name)
-      }
-    }
-  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
-      ScreenHeader(
-        title = stringResource(R.string.wallpapers_title),
-        subtitle = if (state.wallpapers.isEmpty()) {
-          null
-        } else {
-          pluralStringResource(
-            R.plurals.wallpapers_count,
-            state.wallpapers.size,
-            state.wallpapers.size,
-          )
-        },
-      )
+      if (selectionMode) {
+        ScreenHeader(
+          title = pluralStringResource(
+            R.plurals.selected_count,
+            selectedIds.size,
+            selectedIds.size,
+          ),
+          actions = {
+            TextButton(
+              onClick = {
+                selectedIds = if (allSelected) emptySet() else allIds.toSet()
+              },
+            ) {
+              Text(
+                stringResource(
+                  if (allSelected) R.string.deselect_all else R.string.select_all,
+                ),
+              )
+            }
+            IconButton(onClick = { showDeleteSelected = true }) {
+              Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
+            }
+            IconButton(onClick = { showAddToCarousel = true }) {
+              Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_to_carousel))
+            }
+            IconButton(onClick = { selectedIds = emptySet() }) {
+              Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+            }
+          },
+        )
+      } else {
+        ScreenHeader(
+          title = stringResource(R.string.wallpapers_title),
+          subtitle = if (state.wallpapers.isEmpty()) {
+            null
+          } else {
+            pluralStringResource(
+              R.plurals.wallpapers_count,
+              state.wallpapers.size,
+              state.wallpapers.size,
+            )
+          },
+        )
+      }
 
       if (state.wallpapers.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -117,26 +183,57 @@ fun LibraryScreen(
           )
         }
       } else {
-        LazyVerticalGrid(
-          columns = GridCells.Adaptive(minSize = 180.dp),
-          contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 120.dp),
-          horizontalArrangement = Arrangement.spacedBy(16.dp),
-          verticalArrangement = Arrangement.spacedBy(16.dp),
-          modifier = Modifier.fillMaxSize(),
-        ) {
-          items(items = state.wallpapers, key = { it.id }) { wallpaper ->
-            WallpaperCard(
-              wallpaper = wallpaper,
-              carouselNames = carouselsByWallpaper[wallpaper.id].orEmpty(),
-              imageFile = viewModel::imageFile,
-              onClick = { selectedId = wallpaper.id },
+        Box(modifier = Modifier.fillMaxSize()) {
+          LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Adaptive(minSize = 180.dp),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 120.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize(),
+          ) {
+            items(items = state.wallpapers, key = { it.id }) { wallpaper ->
+              WallpaperCard(
+                wallpaper = wallpaper,
+                imageFile = viewModel::imageFile,
+                selected = wallpaper.id in selectedIds,
+                onClick = {
+                  if (selectionMode) {
+                    selectedIds = if (wallpaper.id in selectedIds) {
+                      selectedIds - wallpaper.id
+                    } else {
+                      selectedIds + wallpaper.id
+                    }
+                  } else {
+                    selectedId = wallpaper.id
+                  }
+                },
+                onLongClick = { selectedIds = selectedIds + wallpaper.id },
+              )
+            }
+          }
+          if (selectionMode) {
+            DragSelectOverlay(
+              modifier = Modifier.fillMaxSize(),
+              keyAt = { position -> gridKeyAt(gridState, position) },
+              onSelect = { id ->
+                if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+              },
+              onTap = { id ->
+                if (state.wallpaper(id) != null) {
+                  selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+                }
+              },
+              onEdgeScroll = { dy ->
+                gridState.dispatchRawDelta(dy)
+              },
             )
           }
         }
       }
     }
 
-    if (state.wallpapers.isNotEmpty()) {
+    if (state.wallpapers.isNotEmpty() && !selectionMode) {
       ExtendedFloatingActionButton(
         onClick = launchPicker,
         icon = { Icon(Icons.Default.Add, contentDescription = null) },
@@ -145,28 +242,56 @@ fun LibraryScreen(
       )
     }
   }
-}
 
-@Composable
-private fun WallpaperCard(
-  wallpaper: Wallpaper,
-  carouselNames: List<String>,
-  imageFile: (String) -> java.io.File,
-  onClick: () -> Unit,
-) {
-  val variant = wallpaper.previewVariant()
-  val resolution = variant?.let { "${it.width}×${it.height}" }
-  val carouselLabel = when {
-    carouselNames.isEmpty() -> stringResource(R.string.wallpaper_not_in_carousel)
-    carouselNames.size == 1 -> carouselNames.first()
-    else -> stringResource(
-      R.string.wallpaper_carousel_more,
-      carouselNames.first(),
-      carouselNames.size - 1,
+  if (showDeleteSelected) {
+    ConfirmDialog(
+      title = stringResource(R.string.delete_selected),
+      body = pluralStringResource(
+        R.plurals.delete_selected_body,
+        selectedIds.size,
+        selectedIds.size,
+      ),
+      confirmLabel = stringResource(R.string.delete),
+      onConfirm = {
+        viewModel.deleteWallpapers(selectedIds)
+        selectedIds = emptySet()
+        showDeleteSelected = false
+      },
+      onDismiss = { showDeleteSelected = false },
     )
   }
 
-  Card(onClick = onClick) {
+  if (showAddToCarousel) {
+    AddToCarouselDialog(
+      carousels = state.carousels,
+      onDismiss = { showAddToCarousel = false },
+      onSelect = { carouselId ->
+        viewModel.addWallpapersToCarousel(carouselId, selectedIds.toList())
+        selectedIds = emptySet()
+        showAddToCarousel = false
+      },
+    )
+  }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun WallpaperCard(
+  wallpaper: Wallpaper,
+  imageFile: (String) -> java.io.File,
+  selected: Boolean,
+  onClick: () -> Unit,
+  onLongClick: () -> Unit,
+) {
+  val variant = wallpaper.previewVariant()
+  val resolution = variant?.let { "${it.width}×${it.height}" }
+
+  Card(
+    modifier = Modifier
+      .clip(MaterialTheme.shapes.medium)
+      .semantics { this.selected = selected }
+      .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+  ) {
     Box(
       modifier = Modifier
         .fillMaxWidth()
@@ -185,22 +310,8 @@ private fun WallpaperCard(
           modifier = Modifier.fillMaxSize(),
         )
       }
-      Row(
-        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-      ) {
-        if (wallpaper.portrait != null) {
-          OrientationBadge(
-            text = "P",
-            description = stringResource(R.string.orientation_portrait),
-          )
-        }
-        if (wallpaper.landscape != null) {
-          OrientationBadge(
-            text = "L",
-            description = stringResource(R.string.orientation_landscape),
-          )
-        }
+      if (selected) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
       }
       Row(
         modifier = Modifier
@@ -212,12 +323,12 @@ private fun WallpaperCard(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Text(
-          text = carouselLabel,
+          text = wallpaper.displayName(),
           color = Color.White,
           style = MaterialTheme.typography.labelMedium,
           maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.weight(1f),
+          overflow = TextOverflow.Clip,
+          modifier = Modifier.weight(1f).basicMarquee(),
         )
         if (resolution != null) {
           Text(
@@ -228,22 +339,63 @@ private fun WallpaperCard(
           )
         }
       }
+      if (selected) {
+        Surface(
+          shape = CircleShape,
+          color = MaterialTheme.colorScheme.primary,
+          contentColor = MaterialTheme.colorScheme.onPrimary,
+          modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(28.dp),
+        ) {
+          Icon(
+            imageVector = Icons.Default.Check,
+            contentDescription = null,
+            modifier = Modifier.padding(5.dp),
+          )
+        }
+      }
     }
   }
 }
 
 @Composable
-private fun OrientationBadge(text: String, description: String) {
-  Surface(
-    color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-    contentColor = Color.White,
-    shape = MaterialTheme.shapes.small,
-    modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-  ) {
-    Text(
-      text = text,
-      fontSize = 11.sp,
-      modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-    )
-  }
+private fun AddToCarouselDialog(
+  carousels: List<Carousel>,
+  onDismiss: () -> Unit,
+  onSelect: (String) -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.add_to_carousel)) },
+    text = {
+      if (carousels.isEmpty()) {
+        Text(stringResource(R.string.no_carousels_body))
+      } else {
+        LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+          lazyItems(carousels, key = { it.id }) { carousel ->
+            TextButton(
+              onClick = { onSelect(carousel.id) },
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              Text(
+                text = carousel.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+    },
+  )
 }
+
+private fun gridKeyAt(gridState: LazyGridState, position: Offset): String? =
+  gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+    position.x >= item.offset.x.toFloat() &&
+      position.x <= (item.offset.x + item.size.width).toFloat() &&
+      position.y >= item.offset.y.toFloat() &&
+      position.y <= (item.offset.y + item.size.height).toFloat()
+  }?.key as? String

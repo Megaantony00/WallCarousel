@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,9 +52,22 @@ import com.wallcarousel.app.ui.components.rememberThumbnail
 import java.io.File
 
 @Composable
-fun CarouselListScreen(state: AppState, viewModel: AppViewModel) {
+fun CarouselListScreen(
+  state: AppState,
+  viewModel: AppViewModel,
+  onEditWallpaper: (String, String) -> Unit,
+  openCarouselId: String? = null,
+  onOpenConsumed: () -> Unit = {},
+) {
   var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
   val selected = state.carousel(selectedId)
+
+  LaunchedEffect(openCarouselId) {
+    if (openCarouselId != null) {
+      selectedId = openCarouselId
+      onOpenConsumed()
+    }
+  }
 
   if (selected != null) {
     BackHandler { selectedId = null }
@@ -62,6 +76,7 @@ fun CarouselListScreen(state: AppState, viewModel: AppViewModel) {
       carousel = selected,
       viewModel = viewModel,
       onBack = { selectedId = null },
+      onEditWallpaper = { wallpaperId -> onEditWallpaper(wallpaperId, selected.id) },
     )
     return
   }

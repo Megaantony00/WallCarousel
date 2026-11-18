@@ -21,19 +21,28 @@
     <string name="cancel">Annulla</string>
     <string name="save">Salva</string>
     <string name="wallpaper_name_label">Nome</string>
-    <string name="rename_wallpaper">Rinomina sfondo</string>
+    <string name="edit_wallpaper">Modifica sfondo</string>
     <string name="wallpaper_source_name">Nome suggerito: %1$s</string>
     <string name="unsaved_changes_title">Modifiche non salvate</string>
     <string name="unsaved_changes_body">Vuoi salvare le modifiche prima di continuare?</string>
     <string name="discard_changes">Esci senza salvare</string>
     <string name="delete">Elimina</string>
+    <string name="close">Chiudi</string>
+    <string name="select_all">Seleziona tutte</string>
+    <string name="deselect_all">Deseleziona tutte</string>
+    <string name="delete_selected">Elimina selezionati</string>
+    <plurals name="delete_selected_body">
+        <item quantity="one">Rimuove %d sfondo da WallCarousel e da ogni carosello che lo usa. La foto originale nella galleria non viene toccata.</item>
+        <item quantity="many">Rimuove %d sfondi da WallCarousel e da ogni carosello che li usa. Le foto originali nella galleria non vengono toccate.</item>
+        <item quantity="other">Rimuove %d sfondi da WallCarousel e da ogni carosello che li usa. Le foto originali nella galleria non vengono toccate.</item>
+    </plurals>
+    <string name="add_to_carousel">Aggiungi al carosello</string>
+    <string name="no_carousels_body">Crea prima un carosello nella sezione Caroselli.</string>
+    <string name="remove_selected">Rimuovi selezionati</string>
     <string name="back">Indietro</string>
 
     <string name="orientation_portrait">Verticale</string>
     <string name="orientation_landscape">Orizzontale</string>
-    <string name="orientation_both">Verticale e orizzontale</string>
-    <string name="wallpaper_not_in_carousel">Non in un carosello</string>
-    <string name="wallpaper_carousel_more">%1$s +%2$d</string>
     <string name="wallpaper_preview">Anteprima sfondo</string>
     <string name="no_preview">Nessuna anteprima disponibile</string>
     <string name="drag_focus_hint">Trascina con un dito per spostare, usa due dita per lo zoom. La griglia resta solo nell\'anteprima.</string>
@@ -61,7 +70,7 @@
     <string name="use_for_lock">Usa per il blocco</string>
     <string name="schedule_title">Pianificazione · %1$s</string>
     <string name="schedule_manual">Manuale</string>
-    <string name="schedule_interval">Ogni pochi minuti</string>
+    <string name="schedule_interval">A intervalli</string>
     <string name="schedule_daily">A orari specifici</string>
     <string name="schedule_daily_summary">Alle %1$s</string>
     <string name="schedule_wake">A ogni sblocco</string>
@@ -145,6 +154,11 @@
         <item quantity="one">%1$d sfondo · %2$s</item>
         <item quantity="many">%1$d di sfondi · %2$s</item>
         <item quantity="other">%1$d sfondi · %2$s</item>
+    </plurals>
+    <plurals name="selected_count">
+        <item quantity="one">%d selezionato</item>
+        <item quantity="many">%d selezionati</item>
+        <item quantity="other">%d selezionati</item>
     </plurals>
     <plurals name="schedule_interval_minutes_summary">
         <item quantity="one">Ogni minuto</item>

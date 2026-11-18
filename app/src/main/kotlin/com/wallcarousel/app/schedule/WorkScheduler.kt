@@ -2,9 +2,11 @@
 package com.wallcarousel.app.schedule
 
 import android.content.Context
+import android.os.Build
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -52,12 +54,15 @@ class WorkScheduler(context: Context) {
    * unlocks arrive close together.
    */
   fun enqueueWake() {
-    val request = OneTimeWorkRequestBuilder<ApplyWallpaperWorker>()
+    val builder = OneTimeWorkRequestBuilder<ApplyWallpaperWorker>()
       .setInputData(
         workDataOf(ApplyWallpaperWorker.KEY_TRIGGER to ApplyWallpaperWorker.TRIGGER_WAKE),
       )
       .addTag(TAG)
-      .build()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      builder.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+    }
+    val request = builder.build()
     WorkManager.getInstance(appContext)
       .enqueueUniqueWork(WAKE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
   }

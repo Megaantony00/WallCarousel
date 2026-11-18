@@ -62,6 +62,10 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
   val resources = LocalResources.current
   var section by rememberSaveable { mutableStateOf(AppSection.LIBRARY) }
   var editorActive by remember { mutableStateOf(false) }
+  var editWallpaperId by rememberSaveable { mutableStateOf<String?>(null) }
+  var editReturnCarouselId by remember { mutableStateOf<String?>(null) }
+  var openCarouselId by rememberSaveable { mutableStateOf<String?>(null) }
+  var editReturnSection by remember { mutableStateOf<AppSection?>(null) }
 
   LaunchedEffect(message, resources) {
     val current = message ?: return@LaunchedEffect
@@ -132,9 +136,36 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
             AppSection.LIBRARY -> LibraryScreen(
               state = loaded,
               viewModel = viewModel,
-              onEditorActive = { editorActive = it },
+              onEditorActive = { active ->
+                val wasActive = editorActive
+                editorActive = active
+                if (wasActive && !active) {
+                  val target = editReturnSection
+                  if (target != null) {
+                    editReturnSection = null
+                    if (target == AppSection.CAROUSELS) {
+                      openCarouselId = editReturnCarouselId
+                      editReturnCarouselId = null
+                    }
+                    section = target
+                  }
+                }
+              },
+              openWallpaperId = editWallpaperId,
+              onOpenConsumed = { editWallpaperId = null },
             )
-            AppSection.CAROUSELS -> CarouselListScreen(state = loaded, viewModel = viewModel)
+            AppSection.CAROUSELS -> CarouselListScreen(
+              state = loaded,
+              viewModel = viewModel,
+              onEditWallpaper = { wallpaperId, carouselId ->
+                editWallpaperId = wallpaperId
+                editReturnCarouselId = carouselId
+                editReturnSection = AppSection.CAROUSELS
+                section = AppSection.LIBRARY
+              },
+              openCarouselId = openCarouselId,
+              onOpenConsumed = { openCarouselId = null },
+            )
             AppSection.SETTINGS -> SettingsScreen(state = loaded, viewModel = viewModel)
           }
           if (busy) {
