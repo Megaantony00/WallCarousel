@@ -1,0 +1,1 @@
+- Reset adjustments and Save are lowered a little further below the preview in landscape.

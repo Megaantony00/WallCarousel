@@ -527,7 +527,7 @@ private fun EditorControls(
     )
 
     if (saveAtBottom) {
-      Spacer(modifier = Modifier.height(8.dp))
+      Spacer(modifier = Modifier.height(16.dp))
     }
 
     Row(

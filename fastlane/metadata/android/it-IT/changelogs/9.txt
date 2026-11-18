@@ -1,0 +1,1 @@
+- “Reimposta regolazioni” e “Salva” sono abbassati ancora un po’ sotto l’anteprima in orizzontale.
