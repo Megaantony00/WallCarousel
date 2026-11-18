@@ -1,0 +1,3 @@
+- The system gallery is now the only import source, with the real file names.
+- The carousel chooser shows the first wallpaper of each carousel.
+- The library uses the same select-all checkbox as a carousel.

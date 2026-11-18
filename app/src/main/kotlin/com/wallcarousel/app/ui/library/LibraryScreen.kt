@@ -3,8 +3,6 @@ package com.wallcarousel.app.ui.library
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,7 +30,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -43,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -62,6 +60,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.R
@@ -117,51 +116,45 @@ fun LibraryScreen(
     return
   }
 
-  val picker = rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.PickMultipleVisualMedia(100),
-  ) { uris ->
+  val picker = rememberLauncherForActivityResult(PickGalleryImages()) { uris ->
     if (uris.isNotEmpty()) viewModel.importImages(uris)
   }
-  val launchPicker = {
-    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-  }
-  val galleryPicker = rememberLauncherForActivityResult(PickGalleryImages()) { uris ->
-    if (uris.isNotEmpty()) viewModel.importImages(uris)
-  }
-  val launchGallery = { galleryPicker.launch(Unit) }
+  val launchPicker = { picker.launch(Unit) }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
       if (selectionMode) {
-        ScreenHeader(
-          title = pluralStringResource(
-            R.plurals.selected_count,
-            selectedIds.size,
-            selectedIds.size,
-          ),
-          actions = {
-            TextButton(
-              onClick = {
-                selectedIds = if (allSelected) emptySet() else allIds.toSet()
-              },
-            ) {
-              Text(
-                stringResource(
-                  if (allSelected) R.string.deselect_all else R.string.select_all,
-                ),
-              )
-            }
-            TextButton(onClick = { showAddToCarousel = true }) {
-              Text(stringResource(R.string.add_to_carousel))
-            }
-            IconButton(onClick = { showDeleteSelected = true }) {
-              Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
-            }
-            IconButton(onClick = { selectedIds = emptySet() }) {
-              Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
-            }
-          },
-        )
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          TriStateCheckbox(
+            state = when {
+              allSelected -> ToggleableState.On
+              selectedIds.isEmpty() -> ToggleableState.Off
+              else -> ToggleableState.Indeterminate
+            },
+            onClick = {
+              selectedIds = if (allSelected) emptySet() else allIds.toSet()
+            },
+          )
+          Text(
+            text = pluralStringResource(
+              R.plurals.selected_count,
+              selectedIds.size,
+              selectedIds.size,
+            ),
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.weight(1f),
+          )
+          TextButton(onClick = { showAddToCarousel = true }) {
+            Text(stringResource(R.string.add_to_carousel))
+          }
+          IconButton(onClick = { showDeleteSelected = true }) {
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
+          }
+        }
       } else {
         ScreenHeader(
           title = stringResource(R.string.wallpapers_title),
@@ -173,11 +166,6 @@ fun LibraryScreen(
               state.wallpapers.size,
               state.wallpapers.size,
             )
-          },
-          actions = {
-            TextButton(onClick = launchGallery) {
-              Text(stringResource(R.string.import_from_gallery))
-            }
           },
         )
       }
@@ -268,6 +256,7 @@ fun LibraryScreen(
     AddToCarouselDialog(
       state = state,
       selectedIds = selectedIds,
+      imageFile = viewModel::imageFile,
       onDismiss = { showAddToCarousel = false },
       onSelect = { carouselId ->
         viewModel.addWallpapersToCarousel(carouselId, selectedIds.toList())
@@ -364,6 +353,7 @@ private fun WallpaperCard(
 private fun AddToCarouselDialog(
   state: AppState,
   selectedIds: Set<String>,
+  imageFile: (String) -> java.io.File,
   onDismiss: () -> Unit,
   onSelect: (String) -> Unit,
 ) {
@@ -381,6 +371,13 @@ private fun AddToCarouselDialog(
           lazyItems(state.carousels, key = { it.id }) { carousel ->
             val missing = selectedIds.count { it !in carousel.wallpaperIds }
             val enabled = missing > 0
+            val firstVariant = carousel.wallpaperIds
+              .firstNotNullOfOrNull { state.wallpaper(it) }
+              ?.previewVariant()
+            val thumbnail = rememberThumbnail(
+              file = firstVariant?.let { imageFile(it.fileName) },
+              maxSize = 120,
+            )
             Surface(
               shape = MaterialTheme.shapes.medium,
               color = MaterialTheme.colorScheme.surfaceVariant,
@@ -402,11 +399,20 @@ private fun AddToCarouselDialog(
                     .background(MaterialTheme.colorScheme.primaryContainer),
                   contentAlignment = Alignment.Center,
                 ) {
-                  Text(
-                    text = carousel.name.trim().take(1).uppercase().ifBlank { "?" },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                  )
+                  if (thumbnail != null) {
+                    Image(
+                      bitmap = thumbnail.asImageBitmap(),
+                      contentDescription = null,
+                      contentScale = ContentScale.Crop,
+                      modifier = Modifier.fillMaxSize(),
+                    )
+                  } else {
+                    Text(
+                      text = carousel.name.trim().take(1).uppercase().ifBlank { "?" },
+                      style = MaterialTheme.typography.titleMedium,
+                      color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                  }
                 }
                 Column(
                   modifier = Modifier.weight(1f),

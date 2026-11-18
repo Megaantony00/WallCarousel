@@ -1,6 +1,6 @@
 WallCarousel rinnova la schermata Home e la schermata di blocco del tablet ruotando le foto che scegli tu.
 
-Le foto si importano con il selettore di Android. WallCarousel le copia nello spazio privato dell'app, quindi gli originali nella galleria non vengono mai modificati né cancellati.
+Le foto si importano dalla galleria di sistema. WallCarousel le copia nello spazio privato dell'app, quindi gli originali nella galleria non vengono mai modificati né cancellati.
 
 Funzioni:
 - versione verticale e orizzontale della stessa foto;

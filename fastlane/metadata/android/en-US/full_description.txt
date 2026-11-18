@@ -1,6 +1,6 @@
 WallCarousel keeps the home and lock screens of your tablet fresh by rotating the photos you choose.
 
-Import photos with the Android photo picker. WallCarousel copies them into its private storage, so the originals in your gallery are never modified or deleted.
+Import photos from the system gallery. WallCarousel copies them into its private storage, so the originals in your gallery are never modified or deleted.
 
 Features:
 - separate portrait and landscape versions of the same photo;

@@ -94,4 +94,4 @@ Punti già pronti per F-Droid:
   serve a ricevere `USER_PRESENT`, che Android non consegna ai receiver
   dichiarati nel manifest.
 - Carica l'APK/AAB firmato con la chiave di upload.
-- Non sono necessari permessi di storage: le foto passano dal Photo Picker o dalla galleria di sistema.
+- Non sono necessari permessi di storage: le foto passano dalla galleria di sistema.

@@ -36,7 +36,7 @@ tracking.
 
 ## Features
 
-- Import photos with the Android photo picker or the system gallery. No storage permission is requested.
+- Import photos from the system gallery. No storage permission is requested.
 - Keep separate portrait and landscape versions of the same wallpaper.
 - Non-destructive editing: focal point, zoom, brightness, contrast, saturation and blur.
 - Create ordered carousels and assign them to the home screen, the lock screen, or both.

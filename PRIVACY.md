@@ -31,7 +31,7 @@ statistics are collected.
   above can be displayed. It is never used for anything else.
 - `android.permission.RECEIVE_BOOT_COMPLETED` — restarts the unlock listener after a reboot when
   the option is enabled.
-- The Android photo picker or the system gallery grants temporary read access to the specific images you choose. The app
+- The system gallery grants temporary read access to the specific images you choose. The app
   does not request `READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE` or broad file access.
 - The app does **not** request `INTERNET`, so it cannot transmit data even accidentally.
 

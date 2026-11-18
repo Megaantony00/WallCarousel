@@ -9,7 +9,6 @@
     <string name="wallpapers_title">Wallpapers</string>
     <string name="wallpaper_default_name">Wallpaper</string>
     <string name="import_wallpapers">Import wallpapers</string>
-    <string name="import_from_gallery">Gallery</string>
     <string name="library_empty_title">Your library is empty</string>
     <string name="library_empty_body">Pick photos from your gallery. They are copied into private app storage and never uploaded.</string>
 

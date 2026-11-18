@@ -9,7 +9,6 @@
     <string name="wallpapers_title">Sfondi</string>
     <string name="wallpaper_default_name">Sfondo</string>
     <string name="import_wallpapers">Importa sfondi</string>
-    <string name="import_from_gallery">Galleria</string>
     <string name="library_empty_title">La libreria è vuota</string>
     <string name="library_empty_body">Scegli le foto dalla galleria. Vengono copiate nello spazio privato dell\'app e non vengono mai caricate online.</string>
 
