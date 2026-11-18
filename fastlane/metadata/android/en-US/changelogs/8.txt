@@ -1,0 +1,2 @@
+- The preview is lowered to line up with the visible top of the name field.
+- Reset adjustments and Save now sit clearly below the preview in landscape.

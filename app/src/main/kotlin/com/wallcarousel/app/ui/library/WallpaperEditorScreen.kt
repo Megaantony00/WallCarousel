@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -278,7 +279,10 @@ fun WallpaperEditorScreen(
             showGrid = showGrid,
             onToggleGrid = { showGrid = !showGrid },
             onTransformEnd = onTransformEnd,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+            modifier = Modifier
+              .weight(1f)
+              .fillMaxHeight()
+              .padding(top = 8.dp),
           )
           Column(
             modifier = Modifier
@@ -521,6 +525,10 @@ private fun EditorControls(
       steps = 24,
       onValueChange = { onDraftChange(current.copy(blur = it.roundToInt())) },
     )
+
+    if (saveAtBottom) {
+      Spacer(modifier = Modifier.height(8.dp))
+    }
 
     Row(
       modifier = Modifier.fillMaxWidth(),

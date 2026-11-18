@@ -1,0 +1,2 @@
+- L’anteprima è abbassata per allinearsi al bordo superiore visibile del campo Nome.
+- “Reimposta regolazioni” e “Salva” ora stanno chiaramente sotto l’anteprima in orizzontale.
