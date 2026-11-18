@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
@@ -38,6 +37,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -76,6 +77,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -198,37 +200,60 @@ fun WallpaperEditorScreen(
 
   BackHandler(onBack = requestBack)
 
-  Column(modifier = Modifier.fillMaxSize()) {
+  Column(
+    modifier = Modifier
+      .fillMaxSize()
+      .pointerInput(Unit) {
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          var totalX = 0f
+          var totalY = 0f
+          var tracking = true
+          var pressed = true
+          while (pressed && tracking) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            if (change.isConsumed) {
+              tracking = false
+              break
+            }
+            totalX += change.positionChange().x
+            totalY += change.positionChange().y
+            if (abs(totalY) > viewConfiguration.touchSlop && abs(totalY) > abs(totalX)) {
+              tracking = false
+              break
+            }
+            if (abs(totalX) > viewConfiguration.touchSlop && abs(totalX) > abs(totalY)) {
+              change.consume()
+            }
+            pressed = change.pressed
+          }
+          if (tracking && abs(totalX) >= 80.dp.toPx() && abs(totalX) > abs(totalY)) {
+            if (totalX < 0) {
+              latestNext.value?.let { latestRequestNavigate.value(it) }
+            } else {
+              latestPrevious.value?.let { latestRequestNavigate.value(it) }
+            }
+          }
+        }
+      },
+  ) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 8.dp, vertical = 8.dp)
-        .pointerInput(Unit) {
-          var dragTotal = 0f
-          detectHorizontalDragGestures(
-            onDragStart = { dragTotal = 0f },
-            onDragCancel = { dragTotal = 0f },
-            onHorizontalDrag = { change, dragAmount ->
-              dragTotal += dragAmount
-              change.consume()
-            },
-            onDragEnd = {
-              val threshold = 80.dp.toPx()
-              when {
-                dragTotal <= -threshold -> latestNext.value?.let {
-                  latestRequestNavigate.value(it)
-                }
-                dragTotal >= threshold -> latestPrevious.value?.let {
-                  latestRequestNavigate.value(it)
-                }
-              }
-            },
-          )
-        },
+        .padding(horizontal = 8.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       IconButton(onClick = requestBack) {
         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+      }
+      if (state.wallpapers.size > 1) {
+        Icon(
+          imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+          modifier = Modifier.size(20.dp),
+        )
       }
       Text(
         text = wallpaper.displayName(),
@@ -237,6 +262,14 @@ fun WallpaperEditorScreen(
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
       )
+      if (state.wallpapers.size > 1) {
+        Icon(
+          imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+          modifier = Modifier.size(20.dp),
+        )
+      }
       IconButton(onClick = { confirmDelete = true }) {
         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_wallpaper))
       }

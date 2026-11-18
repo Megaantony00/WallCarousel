@@ -1,0 +1,3 @@
+- Swipe almost anywhere in the editor (header, controls, empty space) to change wallpaper; preview and sliders keep their gestures.
+- Two small chevrons hint that swiping changes photo.
+- The select-all checkbox in "Choose wallpapers" no longer shifts the dialog.

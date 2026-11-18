@@ -1,0 +1,3 @@
+- Swipe quasi ovunque nell’editor (intestazione, controlli, spazi vuoti) per cambiare sfondo; preview e slider mantengono i loro gesti.
+- Due piccoli chevron indicano che lo swipe cambia foto.
+- La casella "Seleziona tutte" in "Scegli sfondi" non sposta più la dialog.

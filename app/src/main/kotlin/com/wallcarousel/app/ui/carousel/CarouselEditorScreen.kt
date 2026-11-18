@@ -966,17 +966,22 @@ private fun AddWallpapersDialog(
           text = stringResource(R.string.choose_wallpapers),
           modifier = Modifier.weight(1f),
         )
-        if (selected.isNotEmpty()) {
-          TriStateCheckbox(
-            state = if (everythingSelected) {
-              ToggleableState.On
-            } else {
-              ToggleableState.Indeterminate
-            },
-            onClick = {
-              selected = if (everythingSelected) emptySet() else availableIds.toSet()
-            },
-          )
+        Box(
+          modifier = Modifier.size(48.dp),
+          contentAlignment = Alignment.Center,
+        ) {
+          if (selected.isNotEmpty()) {
+            TriStateCheckbox(
+              state = if (everythingSelected) {
+                ToggleableState.On
+              } else {
+                ToggleableState.Indeterminate
+              },
+              onClick = {
+                selected = if (everythingSelected) emptySet() else availableIds.toSet()
+              },
+            )
+          }
         }
       }
     },
