@@ -128,6 +128,28 @@ fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
               )
             }
           }
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = stringResource(R.string.pre_render_next),
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              Text(
+                text = stringResource(R.string.pre_render_next_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            Switch(
+              checked = state.preRenderNext,
+              onCheckedChange = viewModel::setPreRenderNext,
+            )
+          }
         }
       }
 

@@ -353,6 +353,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch { repository.update { it.copy(dynamicColor = enabled) } }
   }
 
+  fun setPreRenderNext(enabled: Boolean) {
+    viewModelScope.launch {
+      repository.update { it.copy(preRenderNext = enabled) }
+      if (!enabled) container.applier.clearPreRendered()
+    }
+  }
+
   fun deleteAllData() {
     viewModelScope.launch {
       _busy.value = true

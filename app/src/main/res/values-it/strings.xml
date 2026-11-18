@@ -9,6 +9,7 @@
     <string name="wallpapers_title">Sfondi</string>
     <string name="wallpaper_default_name">Sfondo</string>
     <string name="import_wallpapers">Importa sfondi</string>
+    <string name="import_from_gallery">Galleria</string>
     <string name="library_empty_title">La libreria è vuota</string>
     <string name="library_empty_body">Scegli le foto dalla galleria. Vengono copiate nello spazio privato dell\'app e non vengono mai caricate online.</string>
 
@@ -107,6 +108,8 @@
     <string name="theme_dark">Scuro</string>
     <string name="dynamic_color">Colori dinamici</string>
     <string name="dynamic_color_summary">Usa i colori dello sfondo su Android 12 e versioni successive.</string>
+    <string name="pre_render_next">Pre-renderizza lo sfondo successivo</string>
+    <string name="pre_render_next_summary">Prepara lo sfondo successivo in background per cambiare più velocemente. Usa più CPU, memoria e batteria. Nessun permesso aggiuntivo.</string>
     <string name="data">Dati</string>
     <string name="export_data">Esporta dati</string>
     <string name="export_data_summary">Crea un file zip con i metadati e le immagini originali. Salvalo dove preferisci.</string>

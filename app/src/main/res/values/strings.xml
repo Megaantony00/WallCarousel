@@ -9,6 +9,7 @@
     <string name="wallpapers_title">Wallpapers</string>
     <string name="wallpaper_default_name">Wallpaper</string>
     <string name="import_wallpapers">Import wallpapers</string>
+    <string name="import_from_gallery">Gallery</string>
     <string name="library_empty_title">Your library is empty</string>
     <string name="library_empty_body">Pick photos from your gallery. They are copied into private app storage and never uploaded.</string>
 
@@ -105,6 +106,8 @@
     <string name="theme_dark">Dark</string>
     <string name="dynamic_color">Dynamic color</string>
     <string name="dynamic_color_summary">Use wallpaper-based colors on Android 12 and later.</string>
+    <string name="pre_render_next">Pre-render next wallpaper</string>
+    <string name="pre_render_next_summary">Prepares the next wallpaper in the background to change faster. Uses more CPU, memory and battery. No extra permissions.</string>
     <string name="data">Data</string>
     <string name="export_data">Export data</string>
     <string name="export_data_summary">Creates a zip with the metadata and the original images. Save it wherever you prefer.</string>

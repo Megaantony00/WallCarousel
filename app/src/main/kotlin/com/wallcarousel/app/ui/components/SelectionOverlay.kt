@@ -33,6 +33,7 @@ fun SelectionGestureLayer(
   selectionMode: Boolean,
   keyAt: (Offset) -> String?,
   onSelect: (String) -> Unit,
+  onDragItem: (String) -> Unit,
   onTap: (String) -> Unit,
   onEdgeScroll: (Float) -> Unit,
   modifier: Modifier = Modifier,
@@ -41,6 +42,7 @@ fun SelectionGestureLayer(
   val currentMode by rememberUpdatedState(selectionMode)
   val latestKeyAt by rememberUpdatedState(keyAt)
   val latestSelect by rememberUpdatedState(onSelect)
+  val latestDragItem by rememberUpdatedState(onDragItem)
   val latestTap by rememberUpdatedState(onTap)
   val latestScroll by rememberUpdatedState(onEdgeScroll)
 
@@ -50,6 +52,7 @@ fun SelectionGestureLayer(
         val down = awaitFirstDown(requireUnconsumed = false)
         var selecting = currentMode
         var fromLongPress = false
+        var lastKey: String? = null
 
         if (!selecting) {
           val canceled = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
@@ -70,10 +73,13 @@ fun SelectionGestureLayer(
           if (canceled == true) return@awaitEachGesture
           selecting = true
           fromLongPress = true
-          latestKeyAt(down.position)?.let(latestSelect)
+          val startKey = latestKeyAt(down.position)
+          startKey?.let(latestSelect)
           down.consume()
+          lastKey = startKey
         } else {
           down.consume()
+          lastKey = latestKeyAt(down.position)
         }
 
         var pressed = true
@@ -87,10 +93,16 @@ fun SelectionGestureLayer(
             (change.position - down.position).getDistance() > viewConfiguration.touchSlop
           ) {
             dragged = true
-            latestKeyAt(down.position)?.let(latestSelect)
+            val startKey = latestKeyAt(down.position)
+            startKey?.let(latestSelect)
+            lastKey = startKey
           }
           if (dragged) {
-            latestKeyAt(change.position)?.let(latestSelect)
+            val key = latestKeyAt(change.position)
+            if (key != null && key != lastKey) {
+              latestDragItem(key)
+            }
+            lastKey = key
             when {
               change.position.y < edge -> latestScroll(-20f)
               change.position.y > size.height - edge -> latestScroll(20f)

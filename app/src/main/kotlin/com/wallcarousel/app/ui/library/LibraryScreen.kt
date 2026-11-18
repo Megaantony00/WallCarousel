@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -126,6 +125,10 @@ fun LibraryScreen(
   val launchPicker = {
     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
   }
+  val galleryPicker = rememberLauncherForActivityResult(PickGalleryImages()) { uris ->
+    if (uris.isNotEmpty()) viewModel.importImages(uris)
+  }
+  val launchGallery = { galleryPicker.launch(Unit) }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -171,6 +174,11 @@ fun LibraryScreen(
               state.wallpapers.size,
             )
           },
+          actions = {
+            TextButton(onClick = launchGallery) {
+              Text(stringResource(R.string.import_from_gallery))
+            }
+          },
         )
       }
 
@@ -190,6 +198,11 @@ fun LibraryScreen(
           keyAt = { position -> gridKeyAt(gridState, position) },
           onSelect = { id ->
             if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+          },
+          onDragItem = { id ->
+            if (state.wallpaper(id) != null) {
+              selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+            }
           },
           onTap = { id ->
             if (state.wallpaper(id) != null) {
@@ -389,10 +402,10 @@ private fun AddToCarouselDialog(
                     .background(MaterialTheme.colorScheme.primaryContainer),
                   contentAlignment = Alignment.Center,
                 ) {
-                  Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                  Text(
+                    text = carousel.name.trim().take(1).uppercase().ifBlank { "?" },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                   )
                 }
                 Column(

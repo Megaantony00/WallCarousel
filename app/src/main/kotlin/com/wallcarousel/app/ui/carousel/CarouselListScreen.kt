@@ -189,6 +189,11 @@ fun CarouselListScreen(
           onSelect = { id ->
             if (state.carousel(id) != null) selectedIds = selectedIds + id
           },
+          onDragItem = { id ->
+            if (state.carousel(id) != null) {
+              selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+            }
+          },
           onTap = { id ->
             if (state.carousel(id) != null) {
               selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id

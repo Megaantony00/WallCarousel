@@ -28,12 +28,13 @@ class AppContainer(context: Context) {
 
   val repository = StateRepository(appContext)
   val imageStore = ImageStore(appContext)
-  val applier = StaticWallpaperApplier(appContext, repository, imageStore)
-  val scheduler = WorkScheduler(appContext)
-  val backupManager = BackupManager(appContext, repository, imageStore)
 
   /** Scope for work that must outlive an activity, such as tile clicks. */
   val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+  val applier = StaticWallpaperApplier(appContext, repository, imageStore, appScope)
+  val scheduler = WorkScheduler(appContext)
+  val backupManager = BackupManager(appContext, repository, imageStore)
 
   init {
     appScope.launch { repository.ensureLoaded() }

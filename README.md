@@ -36,7 +36,7 @@ tracking.
 
 ## Features
 
-- Import photos with the Android photo picker. No storage permission is requested.
+- Import photos with the Android photo picker or the system gallery. No storage permission is requested.
 - Keep separate portrait and landscape versions of the same wallpaper.
 - Non-destructive editing: focal point, zoom, brightness, contrast, saturation and blur.
 - Create ordered carousels and assign them to the home screen, the lock screen, or both.
@@ -44,6 +44,7 @@ tracking.
   and an advance on every unlock.
 - Advance the wallpaper from two Quick Settings tiles, one for home and one for lock.
 - Adaptive Compose UI for tablets, Samsung DeX, split-screen and pop-up view.
+- Optional pre-rendering of the next wallpaper (uses more CPU, memory and battery).
 - English and Italian user interface.
 
 ## Current limitations

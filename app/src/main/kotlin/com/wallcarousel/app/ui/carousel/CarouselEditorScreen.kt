@@ -62,6 +62,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -81,6 +82,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -134,9 +136,16 @@ fun CarouselEditorScreen(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       if (selectionMode) {
-        IconButton(onClick = { selectedIds = emptySet() }) {
-          Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
-        }
+        TriStateCheckbox(
+          state = when {
+            allSelected -> ToggleableState.On
+            selectedIds.isEmpty() -> ToggleableState.Off
+            else -> ToggleableState.Indeterminate
+          },
+          onClick = {
+            selectedIds = if (allSelected) emptySet() else carouselIds.toSet()
+          },
+        )
         Text(
           text = pluralStringResource(
             R.plurals.selected_count,
@@ -147,13 +156,6 @@ fun CarouselEditorScreen(
           maxLines = 1,
           modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
-        TextButton(
-          onClick = {
-            selectedIds = if (allSelected) emptySet() else carouselIds.toSet()
-          },
-        ) {
-          Text(stringResource(if (allSelected) R.string.deselect_all else R.string.select_all))
-        }
         TextButton(
           onClick = {
             viewModel.removeWallpapersFromCarousel(carousel.id, selectedIds)
@@ -189,6 +191,11 @@ fun CarouselEditorScreen(
             keyAt = { position -> listKeyAt(listState, position) },
             onSelect = { id ->
               if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+            },
+            onDragItem = { id ->
+              if (state.wallpaper(id) != null) {
+                selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+              }
             },
             onTap = { id ->
               if (state.wallpaper(id) != null) {
@@ -238,6 +245,11 @@ fun CarouselEditorScreen(
           keyAt = { position -> listKeyAt(listState, position) },
           onSelect = { id ->
             if (state.wallpaper(id) != null) selectedIds = selectedIds + id
+          },
+          onDragItem = { id ->
+            if (state.wallpaper(id) != null) {
+              selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+            }
           },
           onTap = { id ->
             if (state.wallpaper(id) != null) {

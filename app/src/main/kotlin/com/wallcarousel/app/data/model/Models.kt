@@ -120,6 +120,7 @@ data class AppState(
   val lock: TargetConfig = TargetConfig(),
   val themeMode: ThemeMode = ThemeMode.SYSTEM,
   val dynamicColor: Boolean = true,
+  val preRenderNext: Boolean = false,
 ) {
   fun wallpaper(id: String?): Wallpaper? = wallpapers.firstOrNull { it.id == id }
 
