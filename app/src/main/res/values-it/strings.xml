@@ -107,6 +107,9 @@
     <string name="theme_system">Sistema</string>
     <string name="theme_light">Chiaro</string>
     <string name="theme_dark">Scuro</string>
+    <string name="language">Lingua</string>
+    <string name="language_summary">Scegli la lingua dell’app. “Segui sistema” usa la lingua del dispositivo.</string>
+    <string name="language_system">Segui sistema</string>
     <string name="dynamic_color">Palette dinamica</string>
     <string name="dynamic_color_summary">Usa i colori dello sfondo della Home per l’interfaccia (Android 12 e successivi).</string>
     <string name="pre_render_next">Pre-renderizza lo sfondo successivo</string>

@@ -16,6 +16,10 @@ class WallCarouselApplication : Application() {
   lateinit var container: AppContainer
     private set
 
+  override fun attachBaseContext(base: Context) {
+    super.attachBaseContext(AppLanguage.wrap(base))
+  }
+
   override fun onCreate() {
     super.onCreate()
     container = AppContainer(this)

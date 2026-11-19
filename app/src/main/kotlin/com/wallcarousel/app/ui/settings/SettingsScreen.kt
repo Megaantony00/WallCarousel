@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.wallcarousel.app.ui.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -23,6 +27,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.wallcarousel.app.AppLanguage
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
 import com.wallcarousel.app.data.model.ThemeMode
@@ -46,12 +52,28 @@ import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
 import com.wallcarousel.app.ui.components.formatBytes
 import java.time.LocalDate
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
   val context = LocalContext.current
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   var storageBytes by remember { mutableLongStateOf(0L) }
+  val languageTags = remember { context.resources.getStringArray(R.array.app_languages) }
+  val systemLanguageLabel = stringResource(R.string.language_system)
+  val languageOptions = remember(languageTags, systemLanguageLabel) {
+    listOf(LanguageOption(null, systemLanguageLabel)) +
+      languageTags.map { tag ->
+        val locale = Locale.forLanguageTag(tag)
+        val label = locale.getDisplayName(locale).replaceFirstChar { first ->
+          if (first.isLowerCase()) first.titlecase(locale) else first.toString()
+        }
+        LanguageOption(tag, label)
+      }
+  }
+  var selectedLanguage by remember {
+    mutableStateOf(AppLanguage.selectedTag(context)?.takeIf { it in languageTags })
+  }
 
   LaunchedEffect(state.wallpapers) {
     storageBytes = viewModel.storageBytes()
@@ -149,6 +171,40 @@ fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
               checked = state.preRenderNext,
               onCheckedChange = viewModel::setPreRenderNext,
             )
+          }
+        }
+      }
+
+      item {
+        SettingsSection(title = stringResource(R.string.language)) {
+          Text(
+            text = stringResource(R.string.language_summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          languageOptions.forEach { option ->
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable(enabled = selectedLanguage != option.tag) {
+                  AppLanguage.setSelectedTag(context, option.tag)
+                  selectedLanguage = option.tag
+                  context.findActivity()?.recreate()
+                }
+                .padding(vertical = 4.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+              RadioButton(
+                selected = selectedLanguage == option.tag,
+                onClick = null,
+              )
+              Text(
+                text = option.label,
+                style = MaterialTheme.typography.bodyLarge,
+              )
+            }
           }
         }
       }
@@ -262,4 +318,12 @@ private fun themeLabel(mode: ThemeMode): Int = when (mode) {
   ThemeMode.SYSTEM -> R.string.theme_system
   ThemeMode.LIGHT -> R.string.theme_light
   ThemeMode.DARK -> R.string.theme_dark
+}
+
+private data class LanguageOption(val tag: String?, val label: String)
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+  is Activity -> this
+  is ContextWrapper -> baseContext.findActivity()
+  else -> null
 }

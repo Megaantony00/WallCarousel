@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Add the tag of every new values-xx/strings.xml translation here. -->
+    <string-array name="app_languages" translatable="false">
+        <item>en</item>
+        <item>it</item>
+    </string-array>
+</resources>

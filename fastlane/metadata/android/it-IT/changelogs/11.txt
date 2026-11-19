@@ -1,0 +1,2 @@
+- Aggiunto il selettore della lingua nell’app: Segui sistema, English, Italiano. Nuove lingue si aggiungono con una traduzione values-xx.
+- La lingua dell’app può ora essere diversa da quella del dispositivo.

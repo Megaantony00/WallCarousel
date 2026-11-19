@@ -1,0 +1,2 @@
+- Added an in-app language picker: Follow system, English, Italiano. More languages can be added with a values-xx translation.
+- The app language can now differ from the device language.

@@ -105,6 +105,9 @@
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="language">Language</string>
+    <string name="language_summary">Choose the app language. “Follow system” uses the device language.</string>
+    <string name="language_system">Follow system</string>
     <string name="dynamic_color">Dynamic palette</string>
     <string name="dynamic_color_summary">Use the Home wallpaper colors for the app palette on Android 12 and later.</string>
     <string name="pre_render_next">Pre-render next wallpaper</string>
