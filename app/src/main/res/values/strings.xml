@@ -109,7 +109,11 @@
     <string name="language_summary">Choose the app language. “Follow system” uses the device language.</string>
     <string name="language_system">Follow system</string>
     <string name="dynamic_color">Dynamic palette</string>
-    <string name="dynamic_color_summary">Use the Home wallpaper colors for the app palette on Android 12 and later.</string>
+    <string name="dynamic_color_summary">Uses the Material You palette chosen in the system settings (Android 12 and later).</string>
+    <string name="wallpaper_palette">Wallpaper palette</string>
+    <string name="wallpaper_palette_summary">Builds the accent colors from the wallpaper itself, even when the system palette is different.</string>
+    <string name="palette_target_home">Home</string>
+    <string name="palette_target_lock">Lock screen</string>
     <string name="pre_render_next">Pre-render next wallpaper</string>
     <string name="pre_render_next_summary">Prepares the next wallpaper in the background to change faster. Uses more CPU, memory and battery. No extra permissions.</string>
     <string name="data">Data</string>

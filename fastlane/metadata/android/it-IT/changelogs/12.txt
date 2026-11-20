@@ -1,0 +1,4 @@
+- Nuova “Palette dallo sfondo”: ricava i colori d’accento dallo sfondo attuale di Home o lock, con scelta della sorgente.
+- Nuovo selettore della lingua (Segui sistema, English, Italiano); nuove lingue si aggiungono con una traduzione values-xx.
+- Lo sfondo viene ritagliato di nuovo automaticamente alla rotazione usando le versioni verticale/orizzontale salvate. Una piccola cache in memoria rende rapido il cambio lato app; il ritardo residuo è Android che riscrive lo sfondo.
+- Documentate le limitazioni dei wallpaper statici e le idee per fork in docs/LIMITATIONS.md.

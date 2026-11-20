@@ -12,14 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.wallcarousel.app.data.model.ThemeMode
 
-private val DarkColorScheme = darkColorScheme(
+internal val DarkColorScheme = darkColorScheme(
   primary = primaryDark,
   primaryContainer = primaryContainerDark,
   secondary = secondaryDark,
   tertiary = tertiaryDark,
 )
 
-private val LightColorScheme = lightColorScheme(
+internal val LightColorScheme = lightColorScheme(
   primary = primaryLight,
   primaryContainer = primaryContainerLight,
   secondary = secondaryLight,
@@ -30,6 +30,8 @@ private val LightColorScheme = lightColorScheme(
 fun WallCarouselTheme(
   themeMode: ThemeMode = ThemeMode.SYSTEM,
   dynamicColor: Boolean = true,
+  wallpaperPalette: Boolean = false,
+  paletteSource: WallpaperPaletteSource? = null,
   content: @Composable () -> Unit,
 ) {
   val darkTheme = when (themeMode) {
@@ -39,6 +41,7 @@ fun WallCarouselTheme(
   }
 
   val colorScheme = when {
+    wallpaperPalette -> rememberWallpaperColorScheme(darkTheme, paletteSource)
     dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
       val context = LocalContext.current
       if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

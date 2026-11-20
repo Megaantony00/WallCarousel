@@ -51,6 +51,10 @@ data class TargetConfig(
   val cursor: Int = 0,
   /** Last successful apply, used to avoid two triggers advancing together. */
   val lastAppliedAt: Long = 0L,
+  /** Wallpaper most recently applied, used to seed the app palette. */
+  val lastWallpaperId: String? = null,
+  /** Orientation used for the last apply, so rotation can re-crop it. */
+  val lastOrientation: Orientation? = null,
 )
 
 /**
@@ -120,6 +124,8 @@ data class AppState(
   val lock: TargetConfig = TargetConfig(),
   val themeMode: ThemeMode = ThemeMode.SYSTEM,
   val dynamicColor: Boolean = true,
+  val wallpaperPalette: Boolean = false,
+  val wallpaperPaletteTarget: ApplyTarget = ApplyTarget.HOME,
   val preRenderNext: Boolean = false,
 ) {
   fun wallpaper(id: String?): Wallpaper? = wallpapers.firstOrNull { it.id == id }
@@ -134,6 +140,22 @@ data class AppState(
   fun withConfig(target: ApplyTarget, config: TargetConfig): AppState = when (target) {
     ApplyTarget.LOCK -> copy(lock = config)
     else -> copy(home = config)
+  }
+
+  /** Variant of the wallpaper most recently applied to [target]. */
+  fun currentVariant(target: ApplyTarget): Variant? {
+    val targetConfig = config(target)
+    targetConfig.lastWallpaperId?.let { id ->
+      wallpaper(id)?.previewVariant()?.let { return it }
+    }
+    val carousel = carousel(targetConfig.carouselId) ?: return null
+    if (targetConfig.lastAppliedAt <= 0L) return null
+    val candidates = carousel.wallpaperIds.mapNotNull { id ->
+      wallpaper(id)?.previewVariant()
+    }
+    if (candidates.isEmpty()) return null
+    val index = ((targetConfig.cursor - 1) % candidates.size + candidates.size) % candidates.size
+    return candidates[index]
   }
 
   /** Number of wallpapers of [carousel] that still exist in the library. */

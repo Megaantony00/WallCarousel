@@ -1,0 +1,4 @@
+- New "Wallpaper palette": extracts accent colors from the current Home or Lock wallpaper, with a Home/Lock source selector.
+- New language picker (Follow system, English, Italiano); more languages can be added with a values-xx translation.
+- The wallpaper is re-cropped automatically on rotation using the saved portrait/landscape versions. A small in-memory cache makes the app-side switch fast; the remaining delay is Android writing the wallpaper.
+- Documented static-wallpaper limits and fork ideas in docs/LIMITATIONS.md.

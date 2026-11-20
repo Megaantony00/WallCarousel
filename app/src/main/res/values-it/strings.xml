@@ -111,7 +111,11 @@
     <string name="language_summary">Scegli la lingua dell’app. “Segui sistema” usa la lingua del dispositivo.</string>
     <string name="language_system">Segui sistema</string>
     <string name="dynamic_color">Palette dinamica</string>
-    <string name="dynamic_color_summary">Usa i colori dello sfondo della Home per l’interfaccia (Android 12 e successivi).</string>
+    <string name="dynamic_color_summary">Usa la palette Material You scelta nelle impostazioni di sistema (Android 12 e successivi).</string>
+    <string name="wallpaper_palette">Palette dallo sfondo</string>
+    <string name="wallpaper_palette_summary">Ricava i colori d’accento dallo sfondo, anche se la palette di sistema è diversa.</string>
+    <string name="palette_target_home">Home</string>
+    <string name="palette_target_lock">Schermata di blocco</string>
     <string name="pre_render_next">Pre-renderizza lo sfondo successivo</string>
     <string name="pre_render_next_summary">Prepara lo sfondo successivo in background per cambiare più velocemente. Usa più CPU, memoria e batteria. Nessun permesso aggiuntivo.</string>
     <string name="data">Dati</string>

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Megaantony00/wallcarousel/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Megaantony00/wallcarousel?style=flat-square"></a>
+  <a href="https://github.com/Megaantony00/WallCarousel/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Megaantony00/WallCarousel?style=flat-square"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue?style=flat-square"></a>
   <img alt="Android 10+" src="https://img.shields.io/badge/Android-10%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
 </p>
@@ -28,11 +28,11 @@ but runs on any device with Android 10 (API 29) or later.
 
 ## Download
 
-[**Download the latest APK**](https://github.com/Megaantony00/wallcarousel/releases/latest) — signed,
+[**Download the latest APK**](https://github.com/Megaantony00/WallCarousel/releases/latest) - signed,
 Android 10 or later.
 
-An F-Droid submission is planned. The app has no `INTERNET` permission, no ads, no analytics and no
-tracking.
+The F-Droid recipe is kept in `fdroid/` for a future submission; the app is currently distributed
+on GitHub. The app has no `INTERNET` permission, no ads, no analytics and no tracking.
 
 ## Features
 
@@ -44,14 +44,26 @@ tracking.
   and an advance on every unlock.
 - Advance the wallpaper from two Quick Settings tiles, one for home and one for lock.
 - Adaptive Compose UI for tablets, Samsung DeX, split-screen and pop-up view.
+- Automatic re-crop on rotation using the saved portrait and landscape versions. The app-side
+  switch is fast; Android still takes a few seconds to write the wallpaper (see limitations).
+- Optional wallpaper-derived accent palette from the current Home or Lock wallpaper.
+- In-app language picker (Follow system, English, Italiano). More languages can be added with a
+  `values-xx` translation.
 - Optional pre-rendering of the next wallpaper (uses more CPU, memory and battery).
-- English and Italian user interface.
 
 ## Current limitations
 
-- A static Android wallpaper stores a single bitmap. WallCarousel renders it for the orientation
-  that is active when the wallpaper is applied; rotating the device afterwards does not switch to
-  the other version. Automatic per-orientation switching requires a live wallpaper.
+- A static Android wallpaper stores a single bitmap. WallCarousel now re-applies the saved
+  portrait or landscape version when the device rotates, using an in-memory cache. The app-side
+  switch is fast, but Android still takes about 2.5–3 seconds per target to write the wallpaper:
+  on the target tablet the visible Home is correct after about 3 seconds and both Home and Lock
+  after about 5. If the process was killed, the re-apply happens when the app is opened. A lock
+  screen that is already visible may keep the old bitmap until the screen is turned off and on.
+- Samsung's system-wide Color palette is manual and does not reliably follow wallpaper changes;
+  there is no public API for a third-party app to set it. The in-app "Wallpaper palette" only
+  themes WallCarousel.
+- The in-app language picker changes the app UI; some manifest, Quick Settings tile and
+  notification labels can still follow the system language.
 - Samsung does not expose third-party live wallpapers on the lock screen. The lock screen is
   static by design.
 - WorkManager is inexact by design: scheduled changes can be delayed by Doze and battery
@@ -63,6 +75,10 @@ tracking.
   itself is fully adaptive and works in DeX.
 - Lock-screen support depends on the device manufacturer. WallCarousel uses the official
   `WallpaperManager` lock flag and reports an error if the system rejects the change.
+
+See [docs/LIMITATIONS.md](docs/LIMITATIONS.md) for implementation details, measured timings and
+ideas for forks (blurred-fill bitmap, live wallpaper, lower-resolution output, persistent cache,
+full Material tonal palette, per-app locales).
 
 ## Build
 

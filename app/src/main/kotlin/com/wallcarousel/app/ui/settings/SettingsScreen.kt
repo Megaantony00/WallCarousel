@@ -7,8 +7,8 @@ import android.content.ContextWrapper
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -20,14 +20,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,10 +46,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.AppLanguage
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
+import com.wallcarousel.app.data.model.ApplyTarget
 import com.wallcarousel.app.data.model.ThemeMode
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
@@ -74,6 +79,9 @@ fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
   var selectedLanguage by remember {
     mutableStateOf(AppLanguage.selectedTag(context)?.takeIf { it in languageTags })
   }
+  var languageMenuOpen by remember { mutableStateOf(false) }
+  val currentLanguageLabel = languageOptions.firstOrNull { it.tag == selectedLanguage }?.label
+    ?: systemLanguageLabel
 
   LaunchedEffect(state.wallpapers) {
     storageBytes = viewModel.storageBytes()
@@ -158,6 +166,48 @@ fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
           ) {
             Column(modifier = Modifier.weight(1f)) {
               Text(
+                text = stringResource(R.string.wallpaper_palette),
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              Text(
+                text = stringResource(R.string.wallpaper_palette_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            Switch(
+              checked = state.wallpaperPalette,
+              onCheckedChange = viewModel::setWallpaperPalette,
+            )
+          }
+
+          if (state.wallpaperPalette) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+              FilterChip(
+                selected = state.wallpaperPaletteTarget == ApplyTarget.HOME,
+                onClick = { viewModel.setWallpaperPaletteTarget(ApplyTarget.HOME) },
+                label = { Text(stringResource(R.string.palette_target_home)) },
+                modifier = Modifier.heightIn(min = 48.dp),
+              )
+              FilterChip(
+                selected = state.wallpaperPaletteTarget == ApplyTarget.LOCK,
+                onClick = { viewModel.setWallpaperPaletteTarget(ApplyTarget.LOCK) },
+                label = { Text(stringResource(R.string.palette_target_lock)) },
+                modifier = Modifier.heightIn(min = 48.dp),
+              )
+            }
+          }
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
                 text = stringResource(R.string.pre_render_next),
                 style = MaterialTheme.typography.bodyLarge,
               )
@@ -182,28 +232,40 @@ fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
-          languageOptions.forEach { option ->
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clickable(enabled = selectedLanguage != option.tag) {
-                  AppLanguage.setSelectedTag(context, option.tag)
-                  selectedLanguage = option.tag
-                  context.findActivity()?.recreate()
-                }
-                .padding(vertical = 4.dp),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
+          Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+              onClick = { languageMenuOpen = true },
+              modifier = Modifier.fillMaxWidth(),
             ) {
-              RadioButton(
-                selected = selectedLanguage == option.tag,
-                onClick = null,
-              )
               Text(
-                text = option.label,
-                style = MaterialTheme.typography.bodyLarge,
+                text = currentLanguageLabel,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Start,
               )
+              Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            }
+            DropdownMenu(
+              expanded = languageMenuOpen,
+              onDismissRequest = { languageMenuOpen = false },
+            ) {
+              languageOptions.forEach { option ->
+                DropdownMenuItem(
+                  text = { Text(option.label) },
+                  onClick = {
+                    languageMenuOpen = false
+                    if (selectedLanguage != option.tag) {
+                      AppLanguage.setSelectedTag(context, option.tag)
+                      selectedLanguage = option.tag
+                      context.findActivity()?.recreate()
+                    }
+                  },
+                  trailingIcon = {
+                    if (selectedLanguage == option.tag) {
+                      Icon(Icons.Default.Check, contentDescription = null)
+                    }
+                  },
+                )
+              }
             }
           }
         }

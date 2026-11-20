@@ -386,7 +386,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   }
 
   fun setDynamicColor(enabled: Boolean) {
-    viewModelScope.launch { repository.update { it.copy(dynamicColor = enabled) } }
+    viewModelScope.launch {
+      repository.update {
+        if (enabled) it.copy(dynamicColor = true, wallpaperPalette = false) else it.copy(dynamicColor = false)
+      }
+    }
+  }
+
+  fun setWallpaperPalette(enabled: Boolean) {
+    viewModelScope.launch {
+      repository.update {
+        if (enabled) it.copy(wallpaperPalette = true, dynamicColor = false) else it.copy(wallpaperPalette = false)
+      }
+    }
+  }
+
+  fun setWallpaperPaletteTarget(target: ApplyTarget) {
+    viewModelScope.launch {
+      repository.update { it.copy(wallpaperPaletteTarget = target) }
+    }
   }
 
   fun setPreRenderNext(enabled: Boolean) {

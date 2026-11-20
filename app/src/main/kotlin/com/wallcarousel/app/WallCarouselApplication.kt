@@ -2,8 +2,11 @@
 package com.wallcarousel.app
 
 import android.app.Application
+import android.app.KeyguardManager
 import android.content.Context
+import android.content.res.Configuration
 import com.wallcarousel.app.data.ImageStore
+import com.wallcarousel.app.data.model.ApplyTarget
 import com.wallcarousel.app.data.StateRepository
 import com.wallcarousel.app.schedule.WorkScheduler
 import com.wallcarousel.app.wallpaper.StaticWallpaperApplier
@@ -15,6 +18,7 @@ import kotlinx.coroutines.launch
 class WallCarouselApplication : Application() {
   lateinit var container: AppContainer
     private set
+  private var lastOrientation = Configuration.ORIENTATION_UNDEFINED
 
   override fun attachBaseContext(base: Context) {
     super.attachBaseContext(AppLanguage.wrap(base))
@@ -22,7 +26,22 @@ class WallCarouselApplication : Application() {
 
   override fun onCreate() {
     super.onCreate()
+    lastOrientation = resources.configuration.orientation
     container = AppContainer(this)
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    if (lastOrientation != newConfig.orientation) {
+      lastOrientation = newConfig.orientation
+      val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+      val first = if (locked) ApplyTarget.LOCK else ApplyTarget.HOME
+      val second = if (locked) ApplyTarget.HOME else ApplyTarget.LOCK
+      container.appScope.launch {
+        container.applier.reapplyCurrent(first)
+        container.applier.reapplyCurrent(second)
+      }
+    }
   }
 }
 
@@ -41,6 +60,10 @@ class AppContainer(context: Context) {
   val backupManager = BackupManager(appContext, repository, imageStore)
 
   init {
-    appScope.launch { repository.ensureLoaded() }
+    appScope.launch {
+      repository.ensureLoaded()
+      applier.reapplyCurrent(ApplyTarget.BOTH)
+      applier.warmOrientationCache(ApplyTarget.BOTH)
+    }
   }
 }

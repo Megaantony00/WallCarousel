@@ -17,6 +17,7 @@ import com.wallcarousel.app.data.model.ThemeMode
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.WallCarouselRoot
 import com.wallcarousel.app.ui.theme.WallCarouselTheme
+import com.wallcarousel.app.ui.theme.WallpaperPaletteSource
 
 class MainActivity : ComponentActivity() {
   override fun attachBaseContext(newBase: Context) {
@@ -29,9 +30,16 @@ class MainActivity : ComponentActivity() {
     setContent {
       val viewModel: AppViewModel = viewModel()
       val state by viewModel.state.collectAsStateWithLifecycle()
+      val paletteSource = state?.let { current ->
+        current.currentVariant(current.wallpaperPaletteTarget)?.let { variant ->
+          WallpaperPaletteSource(viewModel.imageFile(variant.fileName), variant)
+        }
+      }
       WallCarouselTheme(
         themeMode = state?.themeMode ?: ThemeMode.SYSTEM,
         dynamicColor = state?.dynamicColor ?: true,
+        wallpaperPalette = state?.wallpaperPalette ?: false,
+        paletteSource = paletteSource,
       ) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           WallCarouselRoot(viewModel)
