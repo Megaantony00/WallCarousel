@@ -41,6 +41,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = container.repository
 
   val state = repository.state
+  val updateState = container.updater.state
 
   private val _busy = MutableStateFlow(false)
   val busy = _busy.asStateFlow()
@@ -49,6 +50,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   val message = _message.asStateFlow()
 
   fun imageFile(fileName: String): File = container.imageStore.file(fileName)
+
+  private companion object {
+    const val DAY_MS = 24L * 60 * 60 * 1000
+  }
 
   fun clearMessage() {
     _message.value = null
@@ -412,6 +417,43 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
       repository.update { it.copy(preRenderNext = enabled) }
       if (!enabled) container.applier.clearPreRendered()
     }
+  }
+
+  fun setAutoUpdateCheck(enabled: Boolean) {
+    viewModelScope.launch {
+      repository.update { it.copy(autoUpdateCheck = enabled) }
+      if (enabled) checkForUpdates()
+    }
+  }
+
+  fun checkForUpdates() {
+    viewModelScope.launch {
+      container.updater.checkForUpdates()
+      repository.update { it.copy(lastUpdateCheckAt = System.currentTimeMillis()) }
+    }
+  }
+
+  fun maybeAutoCheckForUpdates() {
+    viewModelScope.launch {
+      val current = repository.ensureLoaded()
+      if (!current.autoUpdateCheck) return@launch
+      val now = System.currentTimeMillis()
+      if (now - current.lastUpdateCheckAt < DAY_MS) return@launch
+      container.updater.checkForUpdates()
+      repository.update { it.copy(lastUpdateCheckAt = now) }
+    }
+  }
+
+  fun downloadAndInstallUpdate() {
+    viewModelScope.launch { container.updater.downloadAndInstall() }
+  }
+
+  fun installUpdate() {
+    container.updater.install()
+  }
+
+  fun openInstallPermissionSettings() {
+    container.updater.openInstallPermissionSettings()
   }
 
   fun deleteAllData() {

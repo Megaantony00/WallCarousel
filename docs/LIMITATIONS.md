@@ -142,6 +142,45 @@ not used.
   language list.
 - Add a "Help translate" link in About.
 
+## In-app updater
+
+### What the app does now
+
+`UpdateManager` reads the latest release from the GitHub Releases API
+(`api.github.com/repos/Megaantony00/WallCarousel/releases/latest`) over HTTPS. It chooses the first
+asset whose name ends in `.apk`, downloads it to the app's private cache
+(`cache/updates/`), and verifies:
+
+- the package name is `com.wallcarousel.app`;
+- the APK's version code is not lower than the installed one;
+- the first signing certificate is byte-for-byte identical to the installed app's certificate.
+
+Only then it exposes a content URI through `FileProvider` and opens the system package installer.
+The APK is limited to 80 MB, written to a `.part` file and renamed after a complete download. The
+cache is cleaned on the next app start, so the file is never left in the gallery or a public
+Downloads folder.
+
+Android does not allow silent installs from a normal app. The user must grant "install unknown
+apps" to WallCarousel and confirm the update in the system installer. Google Play Protect may also
+ask to analyse the APK before installing it, especially for an app distributed outside the Play
+Store. The automatic check is off by default; when enabled it runs at most once every 24 hours.
+The manual "Check now" button always works.
+
+GitHub's unauthenticated API is limited to 60 requests per hour per IP. The request sends only a
+`User-Agent` with the app version and standard HTTP metadata; there is no account or device ID.
+
+### Possible fixes for a fork
+
+- Move the check into a periodic `WorkManager` job with a notification when a new release exists,
+  so the user does not have to open the app.
+- Support a pre-release or beta channel, or select assets by ABI/version instead of the first APK.
+- Add a delta/incremental update or use Obtainium/F-Droid as the updater instead of a custom HTTP
+  client.
+- Show the APK signing certificate SHA-256 and the release notes in a dedicated update screen.
+- Add download cancellation and resume; the current implementation uses a single connection.
+- If you change the release host, update `UpdateManager.API_URL` and keep the HTTPS-only check and
+  the signature verification.
+
 ## Other notes
 
 - Release signing: `upload.jks` and `keystore.properties` are gitignored. Forks must use their own

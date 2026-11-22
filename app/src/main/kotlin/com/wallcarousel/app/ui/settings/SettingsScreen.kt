@@ -29,6 +29,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -47,7 +48,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wallcarousel.app.AppLanguage
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
@@ -56,12 +59,14 @@ import com.wallcarousel.app.data.model.ThemeMode
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
 import com.wallcarousel.app.ui.components.formatBytes
+import com.wallcarousel.app.update.UpdateState
 import java.time.LocalDate
 import java.util.Locale
 
 @Composable
 fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
   val context = LocalContext.current
+  val updateState by viewModel.updateState.collectAsStateWithLifecycle()
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   var storageBytes by remember { mutableLongStateOf(0L) }
   val languageTags = remember { context.resources.getStringArray(R.array.app_languages) }
@@ -310,6 +315,121 @@ fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
               text = stringResource(R.string.delete_all),
               color = MaterialTheme.colorScheme.error,
             )
+          }
+        }
+      }
+
+      item {
+        SettingsSection(title = stringResource(R.string.updates)) {
+          Text(
+            text = stringResource(R.string.update_current_version, version),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = stringResource(R.string.auto_update_check),
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              Text(
+                text = stringResource(R.string.auto_update_check_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            Switch(
+              checked = state.autoUpdateCheck,
+              onCheckedChange = viewModel::setAutoUpdateCheck,
+            )
+          }
+          OutlinedButton(
+            onClick = viewModel::checkForUpdates,
+            enabled = updateState !is UpdateState.Checking && updateState !is UpdateState.Downloading,
+          ) {
+            Text(stringResource(R.string.check_updates))
+          }
+
+          when (val update = updateState) {
+            UpdateState.Idle -> Unit
+            UpdateState.Checking -> Text(
+              text = stringResource(R.string.checking_updates),
+              style = MaterialTheme.typography.bodySmall,
+            )
+            UpdateState.UpToDate -> Text(
+              text = stringResource(R.string.up_to_date),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            is UpdateState.Available -> {
+              Text(
+                text = stringResource(R.string.update_available, update.release.versionName),
+                style = MaterialTheme.typography.titleSmall,
+              )
+              if (update.release.notes.isNotBlank()) {
+                Text(
+                  text = update.release.notes,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  maxLines = 6,
+                  overflow = TextOverflow.Ellipsis,
+                )
+              }
+              Button(onClick = viewModel::downloadAndInstallUpdate) {
+                Text(stringResource(R.string.download_and_install))
+              }
+            }
+            is UpdateState.Downloading -> {
+              LinearProgressIndicator(
+                progress = { update.progress / 100f },
+                modifier = Modifier.fillMaxWidth(),
+              )
+              Text(
+                text = stringResource(R.string.downloading_update, update.progress),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            UpdateState.ReadyToInstall -> {
+              Text(
+                text = stringResource(R.string.update_ready),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+              Button(onClick = viewModel::installUpdate) {
+                Text(stringResource(R.string.install_now))
+              }
+            }
+            UpdateState.NeedsInstallPermission -> {
+              Text(
+                text = stringResource(R.string.install_permission_needed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+              Button(onClick = viewModel::openInstallPermissionSettings) {
+                Text(stringResource(R.string.open_settings))
+              }
+              OutlinedButton(onClick = viewModel::installUpdate) {
+                Text(stringResource(R.string.install_now))
+              }
+            }
+            is UpdateState.Failed -> {
+              val message = when (update.reason) {
+                UpdateState.Reason.CHECK -> R.string.update_check_failed
+                UpdateState.Reason.DOWNLOAD -> R.string.update_download_failed
+                UpdateState.Reason.VERIFY -> R.string.update_verify_failed
+                UpdateState.Reason.INSTALL -> R.string.update_install_failed
+              }
+              Text(
+                text = stringResource(message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+              )
+            }
           }
         }
       }

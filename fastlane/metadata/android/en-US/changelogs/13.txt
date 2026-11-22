@@ -1,0 +1,3 @@
+- Added in-app update.
+- New INTERNET and install-packages permissions, used only for updates. The app remains offline unless you check for updates or enable startup checks.
+- Update checks can run at startup (off by default) or manually from Settings → Updates.

@@ -1,0 +1,3 @@
+- Aggiunto update in app.
+- Nuovi permessi INTERNET e installazione app, usati solo per gli aggiornamenti. L’app resta offline se non controlli gli aggiornamenti o non attivi il controllo all’avvio.
+- Il controllo può avvenire all’avvio (disattivato di default) o manualmente da Impostazioni → Aggiornamenti.

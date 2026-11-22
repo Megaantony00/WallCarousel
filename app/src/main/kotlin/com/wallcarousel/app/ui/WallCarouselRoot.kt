@@ -21,7 +21,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.ApplyTarget
+import com.wallcarousel.app.update.UpdateState
 import com.wallcarousel.app.ui.carousel.CarouselListScreen
 import com.wallcarousel.app.ui.library.LibraryScreen
 import com.wallcarousel.app.ui.settings.SettingsScreen
@@ -58,8 +61,10 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
   val state by viewModel.state.collectAsStateWithLifecycle()
   val busy by viewModel.busy.collectAsStateWithLifecycle()
   val message by viewModel.message.collectAsStateWithLifecycle()
+  val updateState by viewModel.updateState.collectAsStateWithLifecycle()
   val snackbarHostState = remember { SnackbarHostState() }
   val resources = LocalResources.current
+  var notifiedUpdateVersion by rememberSaveable { mutableStateOf<String?>(null) }
   var section by rememberSaveable { mutableStateOf(AppSection.LIBRARY) }
   var editorActive by remember { mutableStateOf(false) }
   var editWallpaperId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -88,6 +93,23 @@ fun WallCarouselRoot(viewModel: AppViewModel) {
     }
     viewModel.clearMessage()
     snackbarHostState.showSnackbar(text)
+  }
+
+  LaunchedEffect(Unit) {
+    viewModel.maybeAutoCheckForUpdates()
+  }
+
+  LaunchedEffect(updateState, state) {
+    val available = updateState as? UpdateState.Available ?: return@LaunchedEffect
+    if (state?.autoUpdateCheck != true) return@LaunchedEffect
+    if (notifiedUpdateVersion == available.release.versionName) return@LaunchedEffect
+    notifiedUpdateVersion = available.release.versionName
+    val result = snackbarHostState.showSnackbar(
+      message = resources.getString(R.string.update_available, available.release.versionName),
+      actionLabel = resources.getString(R.string.open),
+      duration = SnackbarDuration.Long,
+    )
+    if (result == SnackbarResult.ActionPerformed) section = AppSection.SETTINGS
   }
 
   val loaded = state

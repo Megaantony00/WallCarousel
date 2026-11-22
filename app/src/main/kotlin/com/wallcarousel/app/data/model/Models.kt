@@ -127,6 +127,8 @@ data class AppState(
   val wallpaperPalette: Boolean = false,
   val wallpaperPaletteTarget: ApplyTarget = ApplyTarget.HOME,
   val preRenderNext: Boolean = false,
+  val autoUpdateCheck: Boolean = false,
+  val lastUpdateCheckAt: Long = 0L,
 ) {
   fun wallpaper(id: String?): Wallpaper? = wallpapers.firstOrNull { it.id == id }
 

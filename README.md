@@ -5,7 +5,7 @@
 <h1 align="center">WallCarousel</h1>
 
 <p align="center">
-  <b>Rotate home and lock wallpapers on your tablet — completely offline.</b>
+  <b>Rotate home and lock wallpapers on your tablet — offline by default.</b>
 </p>
 
 <p align="center">
@@ -31,8 +31,10 @@ but runs on any device with Android 10 (API 29) or later.
 [**Download the latest APK**](https://github.com/Megaantony00/WallCarousel/releases/latest) - signed,
 Android 10 or later.
 
-The F-Droid recipe is kept in `fdroid/` for a future submission; the app is currently distributed
-on GitHub. The app has no `INTERNET` permission, no ads, no analytics and no tracking.
+There are no ads, no analytics and no tracking. The `INTERNET` permission is used only by the
+in-app update feature, which reads the latest release from this GitHub repository and downloads
+its signed APK. The app works offline if you never check for updates. The F-Droid recipe is kept
+in `fdroid/` for a future submission; the app is currently distributed on GitHub.
 
 ## Features
 
@@ -49,6 +51,7 @@ on GitHub. The app has no `INTERNET` permission, no ads, no analytics and no tra
 - Optional wallpaper-derived accent palette from the current Home or Lock wallpaper.
 - In-app language picker (Follow system, English, Italiano). More languages can be added with a
   `values-xx` translation.
+- In-app update: checks GitHub Releases and installs the new signed APK from the app.
 - Optional pre-rendering of the next wallpaper (uses more CPU, memory and battery).
 
 ## Current limitations
@@ -135,8 +138,9 @@ publication checklist.
 
 ## Privacy
 
-WallCarousel works completely offline. Photos, metadata and settings never leave the device.
-See [PRIVACY.md](PRIVACY.md) for details, including export and deletion.
+WallCarousel works offline by default. Photos, metadata and settings never leave the device. If
+you enable update checks, the app contacts GitHub only to read the latest release and download its
+signed APK. See [PRIVACY.md](PRIVACY.md) for details, including export and deletion.
 
 ## License
 

@@ -122,13 +122,33 @@
     <string name="delete_all">Delete all data</string>
     <string name="delete_all_summary">Removes every wallpaper, carousel, schedule and setting stored by WallCarousel.</string>
     <string name="delete_all_body">This cannot be undone. Photos in your gallery are not touched. The wallpaper currently set on the device is not changed.</string>
+    <string name="updates">Updates</string>
+    <string name="update_current_version">Current version: %1$s</string>
+    <string name="auto_update_check">Check for updates on startup</string>
+    <string name="auto_update_check_summary">Contacts GitHub only to look for new versions. INTERNET is used only for update checks and downloads.</string>
+    <string name="check_updates">Check now</string>
+    <string name="checking_updates">Checking…</string>
+    <string name="up_to_date">You already have the latest version.</string>
+    <string name="update_available">Update available: %1$s</string>
+    <string name="download_and_install">Download and install</string>
+    <string name="downloading_update">Downloading %1$d%%</string>
+    <string name="install_now">Install now</string>
+    <string name="update_ready">Download complete. Open the installer.</string>
+    <string name="install_permission_needed">Allow WallCarousel to install updates.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="update_check_failed">Could not check for updates.</string>
+    <string name="update_download_failed">Download failed.</string>
+    <string name="update_verify_failed">The downloaded APK is invalid or not signed with the WallCarousel key.</string>
+    <string name="update_install_failed">Could not open the installer.</string>
+    <string name="open">Open</string>
+
     <string name="about">About</string>
     <string name="version_label">Version %1$s</string>
     <string name="license_label">License</string>
     <string name="license_value">GNU General Public License v3.0 or later</string>
     <string name="privacy_title">Privacy</string>
-    <string name="privacy_body">WallCarousel works completely offline: it has no internet permission, no analytics and no ads. Photos you import are copied into private app storage, which is protected by Android file-based encryption. Nothing is sent anywhere. You can export or delete everything at any time from this screen. Only the system wallpaper API is used to change the wallpaper.</string>
-    <string name="no_network_note">This app requests no network permission.</string>
+    <string name="privacy_body">WallCarousel works offline by default. The only network access is the GitHub update check: when you enable it or tap “Check now”, the app reads the latest release, downloads the APK to its private cache and hands it to the system installer. No personal data is sent and there are no analytics or ads. Photos you import stay in private app storage, protected by Android file-based encryption. You can export or delete everything at any time from this screen.</string>
+    <string name="no_network_note">The INTERNET permission is used only for update checks and APK downloads.</string>
 
     <string name="import_failed">Could not import the selected images.</string>
     <string name="apply_home_success">Home wallpaper updated.</string>

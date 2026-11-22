@@ -124,13 +124,33 @@
     <string name="delete_all">Elimina tutti i dati</string>
     <string name="delete_all_summary">Rimuove ogni sfondo, carosello, pianificazione e impostazione salvata da WallCarousel.</string>
     <string name="delete_all_body">L\'operazione non può essere annullata. Le foto nella galleria non vengono toccate. Lo sfondo attualmente impostato sul dispositivo non viene modificato.</string>
+    <string name="updates">Aggiornamenti</string>
+    <string name="update_current_version">Versione attuale: %1$s</string>
+    <string name="auto_update_check">Controlla aggiornamenti all’avvio</string>
+    <string name="auto_update_check_summary">Contatta GitHub solo per cercare nuove versioni. INTERNET viene usato solo per controlli e download degli aggiornamenti.</string>
+    <string name="check_updates">Controlla ora</string>
+    <string name="checking_updates">Controllo…</string>
+    <string name="up_to_date">Hai già l’ultima versione.</string>
+    <string name="update_available">Aggiornamento disponibile: %1$s</string>
+    <string name="download_and_install">Scarica e installa</string>
+    <string name="downloading_update">Download %1$d%%</string>
+    <string name="install_now">Installa ora</string>
+    <string name="update_ready">Download completato. Apri l’installer.</string>
+    <string name="install_permission_needed">Consenti a WallCarousel di installare gli aggiornamenti.</string>
+    <string name="open_settings">Apri impostazioni</string>
+    <string name="update_check_failed">Impossibile controllare gli aggiornamenti.</string>
+    <string name="update_download_failed">Download non riuscito.</string>
+    <string name="update_verify_failed">L’APK scaricato non è valido o non è firmato con la chiave di WallCarousel.</string>
+    <string name="update_install_failed">Impossibile aprire l’installer.</string>
+    <string name="open">Apri</string>
+
     <string name="about">Informazioni</string>
     <string name="version_label">Versione %1$s</string>
     <string name="license_label">Licenza</string>
     <string name="license_value">GNU General Public License v3.0 o successiva</string>
     <string name="privacy_title">Privacy</string>
-    <string name="privacy_body">WallCarousel funziona completamente offline: non ha il permesso internet, non usa analytics e non mostra pubblicità. Le foto importate vengono copiate nello spazio privato dell\'app, protetto dalla cifratura dei file di Android. Nulla viene inviato all\'esterno. Puoi esportare o eliminare tutto in qualsiasi momento da questa schermata. Per cambiare lo sfondo viene usata solo l\'API di sistema.</string>
-    <string name="no_network_note">Questa app non richiede il permesso di rete.</string>
+    <string name="privacy_body">WallCarousel funziona offline per impostazione predefinita. L\'unico accesso alla rete è il controllo degli aggiornamenti su GitHub: se lo attivi o premi “Controlla ora”, l\'app legge l\'ultima release, scarica l\'APK nella cache privata e lo passa all\'installer di sistema. Nessun dato personale viene inviato e non ci sono analytics o pubblicità. Le foto importate restano nello spazio privato dell\'app, protetto dalla cifratura dei file di Android. Puoi esportare o eliminare tutto in qualsiasi momento da questa schermata.</string>
+    <string name="no_network_note">Il permesso INTERNET è usato solo per controlli e download degli aggiornamenti.</string>
 
     <string name="import_failed">Impossibile importare le immagini selezionate.</string>
     <string name="apply_home_success">Sfondo Home aggiornato.</string>

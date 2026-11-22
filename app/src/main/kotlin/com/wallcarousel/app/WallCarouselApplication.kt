@@ -9,6 +9,7 @@ import com.wallcarousel.app.data.ImageStore
 import com.wallcarousel.app.data.model.ApplyTarget
 import com.wallcarousel.app.data.StateRepository
 import com.wallcarousel.app.schedule.WorkScheduler
+import com.wallcarousel.app.update.UpdateManager
 import com.wallcarousel.app.wallpaper.StaticWallpaperApplier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,8 +59,10 @@ class AppContainer(context: Context) {
   val applier = StaticWallpaperApplier(appContext, repository, imageStore, appScope)
   val scheduler = WorkScheduler(appContext)
   val backupManager = BackupManager(appContext, repository, imageStore)
+  val updater = UpdateManager(appContext)
 
   init {
+    updater.cleanup()
     appScope.launch {
       repository.ensureLoaded()
       applier.reapplyCurrent(ApplyTarget.BOTH)
