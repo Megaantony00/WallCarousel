@@ -22,7 +22,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.R
+import com.wallcarousel.app.data.model.Variant
 import com.wallcarousel.app.wallpaper.ThumbnailLoader
+import com.wallcarousel.app.wallpaper.WallpaperPreviewLoader
 import java.io.File
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -39,6 +41,31 @@ fun rememberThumbnail(file: File?, maxSize: Int): Bitmap? {
     maxSize,
   ) {
     value = file?.let { ThumbnailLoader.load(it, maxSize) }
+  }
+  return state.value
+}
+
+/** Loads a cached preview rendered with the full crop, filter and band recipe. */
+@Composable
+fun rememberWallpaperPreview(
+  file: File?,
+  variant: Variant?,
+  width: Int,
+  height: Int,
+): Bitmap? {
+  val state = produceState<Bitmap?>(
+    initialValue = null,
+    file?.absolutePath,
+    file?.lastModified(),
+    variant,
+    width,
+    height,
+  ) {
+    value = if (file != null && variant != null) {
+      WallpaperPreviewLoader.load(file, variant, width, height)
+    } else {
+      null
+    }
   }
   return state.value
 }

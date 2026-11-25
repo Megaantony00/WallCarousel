@@ -227,6 +227,28 @@ fun SettingsScreen(state: AppState, viewModel: AppViewModel) {
               onCheckedChange = viewModel::setPreRenderNext,
             )
           }
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = stringResource(R.string.fast_wallpaper_write),
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              Text(
+                text = stringResource(R.string.fast_wallpaper_write_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+            Switch(
+              checked = state.jpegWallpaperWrite,
+              onCheckedChange = viewModel::setJpegWallpaperWrite,
+            )
+          }
         }
       }
 

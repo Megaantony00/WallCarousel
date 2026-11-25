@@ -53,6 +53,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -87,6 +88,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
+import com.wallcarousel.app.data.model.BandStyle
 import com.wallcarousel.app.data.model.CropMath
 import com.wallcarousel.app.data.model.Orientation
 import com.wallcarousel.app.data.model.Variant
@@ -137,6 +139,14 @@ fun WallpaperEditorScreen(
   }
   var draftName by rememberSaveable(wallpaper.id) { mutableStateOf(wallpaper.name) }
   LaunchedEffect(wallpaper.name) { draftName = wallpaper.name }
+  var visiblePortrait by rememberSaveable(wallpaper.id) {
+    mutableStateOf(wallpaper.visiblePortrait)
+  }
+  var visibleLandscape by rememberSaveable(wallpaper.id) {
+    mutableStateOf(wallpaper.visibleLandscape)
+  }
+  LaunchedEffect(wallpaper.visiblePortrait) { visiblePortrait = wallpaper.visiblePortrait }
+  LaunchedEffect(wallpaper.visibleLandscape) { visibleLandscape = wallpaper.visibleLandscape }
 
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   var showGrid by rememberSaveable(wallpaper.id) { mutableStateOf(false) }
@@ -151,7 +161,9 @@ fun WallpaperEditorScreen(
     addLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
   }
 
-  val dirty = draft != stored || draftName.trim() != wallpaper.name
+  val dirty = draft != stored || draftName.trim() != wallpaper.name ||
+    visiblePortrait != wallpaper.visiblePortrait ||
+    visibleLandscape != wallpaper.visibleLandscape
   val namePlaceholder = wallpaper.sourceName.ifBlank {
     stringResource(R.string.wallpaper_default_name)
   }
@@ -178,8 +190,18 @@ fun WallpaperEditorScreen(
   val latestRequestNavigate = rememberUpdatedState(requestNavigate)
   val saveAll: () -> Unit = {
     focusManager.clearFocus()
-    if (draft != null || draftName.trim() != wallpaper.name) {
-      viewModel.updateWallpaper(wallpaper.id, draftName, orientation, draft)
+    if (draft != null || draftName.trim() != wallpaper.name ||
+      visiblePortrait != wallpaper.visiblePortrait ||
+      visibleLandscape != wallpaper.visibleLandscape
+    ) {
+      viewModel.updateWallpaper(
+        wallpaperId = wallpaper.id,
+        name = draftName,
+        orientation = orientation,
+        variant = draft,
+        visiblePortrait = visiblePortrait,
+        visibleLandscape = visibleLandscape,
+      )
     }
   }
   val applyPending: (PendingChange) -> Unit = { change ->
@@ -296,7 +318,13 @@ fun WallpaperEditorScreen(
               draft = draft,
               name = draftName,
               namePlaceholder = namePlaceholder,
+              visiblePortrait = visiblePortrait,
+              visibleLandscape = visibleLandscape,
               onNameChange = { draftName = it },
+              onVisibilityChange = { portrait, landscape ->
+                visiblePortrait = portrait
+                visibleLandscape = landscape
+              },
               onOrientationChange = requestOrientation,
               onDraftChange = { draft = it },
               onSave = saveAll,
@@ -329,7 +357,13 @@ fun WallpaperEditorScreen(
             draft = draft,
             name = draftName,
             namePlaceholder = namePlaceholder,
+            visiblePortrait = visiblePortrait,
+            visibleLandscape = visibleLandscape,
             onNameChange = { draftName = it },
+            onVisibilityChange = { portrait, landscape ->
+              visiblePortrait = portrait
+              visibleLandscape = landscape
+            },
             onOrientationChange = requestOrientation,
             onDraftChange = { draft = it },
             onSave = saveAll,
@@ -364,6 +398,8 @@ fun WallpaperEditorScreen(
             pendingChange = null
             if (change is PendingChange.OrientationChange) {
               draftName = wallpaper.name
+              visiblePortrait = wallpaper.visiblePortrait
+              visibleLandscape = wallpaper.visibleLandscape
             }
             applyPending(change)
           },
@@ -395,7 +431,10 @@ private fun EditorControls(
   draft: Variant?,
   name: String,
   namePlaceholder: String,
+  visiblePortrait: Boolean,
+  visibleLandscape: Boolean,
   onNameChange: (String) -> Unit,
+  onVisibilityChange: (Boolean, Boolean) -> Unit,
   onOrientationChange: (Orientation) -> Unit,
   onDraftChange: (Variant) -> Unit,
   onSave: () -> Unit,
@@ -434,6 +473,32 @@ private fun EditorControls(
         )
       }
     }
+
+    Text(
+      text = stringResource(R.string.visible_in),
+      style = MaterialTheme.typography.titleSmall,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      FilterChip(
+        selected = visiblePortrait,
+        enabled = !(visiblePortrait && !visibleLandscape),
+        onClick = { onVisibilityChange(!visiblePortrait, visibleLandscape) },
+        label = { Text(stringResource(R.string.orientation_portrait)) },
+        modifier = Modifier.heightIn(min = 48.dp),
+      )
+      FilterChip(
+        selected = visibleLandscape,
+        enabled = !(visibleLandscape && !visiblePortrait),
+        onClick = { onVisibilityChange(visiblePortrait, !visibleLandscape) },
+        label = { Text(stringResource(R.string.orientation_landscape)) },
+        modifier = Modifier.heightIn(min = 48.dp),
+      )
+    }
+    Text(
+      text = stringResource(R.string.visible_in_summary),
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
     if (draft == null) {
       Card {
@@ -488,6 +553,55 @@ private fun EditorControls(
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+
+    Card {
+      Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Column(modifier = Modifier.weight(1f)) {
+            Text(
+              text = stringResource(R.string.blurred_bands),
+              style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+              text = stringResource(R.string.blurred_bands_summary),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Switch(
+            checked = current.blurredBands,
+            onCheckedChange = { onDraftChange(current.copy(blurredBands = it)) },
+          )
+        }
+        if (current.blurredBands) {
+          Text(
+            text = stringResource(R.string.band_style),
+            style = MaterialTheme.typography.bodyMedium,
+          )
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+              selected = current.bandStyle == BandStyle.DARK,
+              onClick = { onDraftChange(current.copy(bandStyle = BandStyle.DARK)) },
+              label = { Text(stringResource(R.string.band_style_dark)) },
+              modifier = Modifier.heightIn(min = 48.dp),
+            )
+            FilterChip(
+              selected = current.bandStyle == BandStyle.LIGHT,
+              onClick = { onDraftChange(current.copy(bandStyle = BandStyle.LIGHT)) },
+              label = { Text(stringResource(R.string.band_style_light)) },
+              modifier = Modifier.heightIn(min = 48.dp),
+            )
+          }
+        }
+      }
+    }
 
     AdjustmentSlider(
       label = stringResource(R.string.zoom),
@@ -546,6 +660,9 @@ private fun EditorControls(
                 fileName = stored.fileName,
                 width = stored.width,
                 height = stored.height,
+              ).copy(
+                blurredBands = current.blurredBands,
+                bandStyle = current.bandStyle,
               ),
             )
           }
@@ -657,6 +774,14 @@ private fun WallpaperPreview(
             Modifier
           }
 
+          if (variant.blurredBands) {
+            BandBackground(
+              bitmap = bitmap,
+              variant = variant,
+              modifier = Modifier.fillMaxSize(),
+            )
+          }
+
           Box(
             modifier = Modifier
               .fillMaxSize()
@@ -721,26 +846,48 @@ private fun WallpaperPreview(
           ) {
             Box(modifier = Modifier.fillMaxSize().then(imageModifier)) {
               Canvas(modifier = Modifier.fillMaxSize()) {
-                val crop = CropMath.cropRect(
-                  sourceWidth = bitmap.width,
-                  sourceHeight = bitmap.height,
-                  targetAspect = aspectRatio,
-                  focalX = liveFocalX,
-                  focalY = liveFocalY,
-                  zoom = liveZoom,
-                )
-                val left = crop.left.roundToInt().coerceIn(0, bitmap.width - 1)
-                val top = crop.top.roundToInt().coerceIn(0, bitmap.height - 1)
-                val right = crop.right.roundToInt().coerceIn(left + 1, bitmap.width)
-                val bottom = crop.bottom.roundToInt().coerceIn(top + 1, bitmap.height)
                 paint.colorFilter = colorFilter
-                drawIntoCanvas { canvas ->
-                  canvas.nativeCanvas.drawBitmap(
-                    bitmap,
-                    Rect(left, top, right, bottom),
-                    RectF(0f, 0f, size.width, size.height),
-                    paint,
+                if (variant.blurredBands) {
+                  val zoom = liveZoom.coerceAtLeast(1f)
+                  val fit = minOf(
+                    size.width / bitmap.width,
+                    size.height / bitmap.height,
+                  ) * zoom
+                  val drawWidth = bitmap.width * fit
+                  val drawHeight = bitmap.height * fit
+                  val left = size.width / 2f -
+                    liveFocalX.coerceIn(0f, 1f) * drawWidth
+                  val top = size.height / 2f -
+                    liveFocalY.coerceIn(0f, 1f) * drawHeight
+                  drawIntoCanvas { canvas ->
+                    canvas.nativeCanvas.drawBitmap(
+                      bitmap,
+                      null,
+                      RectF(left, top, left + drawWidth, top + drawHeight),
+                      paint,
+                    )
+                  }
+                } else {
+                  val crop = CropMath.cropRect(
+                    sourceWidth = bitmap.width,
+                    sourceHeight = bitmap.height,
+                    targetAspect = aspectRatio,
+                    focalX = liveFocalX,
+                    focalY = liveFocalY,
+                    zoom = liveZoom,
                   )
+                  val left = crop.left.roundToInt().coerceIn(0, bitmap.width - 1)
+                  val top = crop.top.roundToInt().coerceIn(0, bitmap.height - 1)
+                  val right = crop.right.roundToInt().coerceIn(left + 1, bitmap.width)
+                  val bottom = crop.bottom.roundToInt().coerceIn(top + 1, bitmap.height)
+                  drawIntoCanvas { canvas ->
+                    canvas.nativeCanvas.drawBitmap(
+                      bitmap,
+                      Rect(left, top, right, bottom),
+                      RectF(0f, 0f, size.width, size.height),
+                      paint,
+                    )
+                  }
                 }
               }
             }
@@ -789,6 +936,54 @@ private fun WallpaperPreview(
           modifier = Modifier.align(Alignment.Center),
         )
       }
+    }
+  }
+}
+
+@Composable
+private fun BandBackground(
+  bitmap: Bitmap,
+  variant: Variant,
+  modifier: Modifier = Modifier,
+) {
+  val paint = remember { Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG) }
+  val colorFilter = remember(variant.brightness, variant.contrast, variant.saturation) {
+    WallpaperRenderer.colorFilter(variant)
+  }
+  val blurModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    Modifier.blur(30.dp)
+  } else {
+    Modifier
+  }
+  Box(modifier = modifier) {
+    Box(modifier = Modifier.fillMaxSize().then(blurModifier)) {
+      Canvas(modifier = Modifier.fillMaxSize()) {
+        paint.colorFilter = colorFilter
+        val scale = maxOf(
+          size.width / bitmap.width,
+          size.height / bitmap.height,
+        ) * 1.08f
+        val drawWidth = bitmap.width * scale
+        val drawHeight = bitmap.height * scale
+        val left = (size.width - drawWidth) / 2f
+        val top = (size.height - drawHeight) / 2f
+        drawIntoCanvas { canvas ->
+          canvas.nativeCanvas.drawBitmap(
+            bitmap,
+            null,
+            RectF(left, top, left + drawWidth, top + drawHeight),
+            paint,
+          )
+        }
+      }
+    }
+    Canvas(modifier = Modifier.fillMaxSize()) {
+      drawRect(
+        color = when (variant.bandStyle) {
+          BandStyle.DARK -> Color.Black.copy(alpha = 0.46f)
+          BandStyle.LIGHT -> Color.White.copy(alpha = 0.36f)
+        },
+      )
     }
   }
 }

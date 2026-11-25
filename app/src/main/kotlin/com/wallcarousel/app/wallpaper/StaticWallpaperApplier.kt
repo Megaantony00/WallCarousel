@@ -4,15 +4,22 @@ package com.wallcarousel.app.wallpaper
 import android.app.WallpaperManager
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.hardware.display.DisplayManager
 import android.util.DisplayMetrics
 import android.view.Display
 import com.wallcarousel.app.data.ImageStore
 import com.wallcarousel.app.data.StateRepository
+import com.wallcarousel.app.data.model.AppState
 import com.wallcarousel.app.data.model.ApplyTarget
+import com.wallcarousel.app.data.model.Carousel
 import com.wallcarousel.app.data.model.Orientation
+import com.wallcarousel.app.data.model.Playback
+import com.wallcarousel.app.data.model.PlaybackItem
+import com.wallcarousel.app.data.model.RotationChoice
 import com.wallcarousel.app.data.model.Variant
-import com.wallcarousel.app.data.model.Wallpaper
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,6 +31,9 @@ sealed interface ApplyResult {
   data class Applied(val target: ApplyTarget, val wallpaperNames: List<String>) : ApplyResult
   data object NoCarousel : ApplyResult
   data object NoWallpapers : ApplyResult
+
+  /** The carousel has wallpapers, but none is allowed in the current view. */
+  data object NoVisibleWallpapers : ApplyResult
   data object NotSupported : ApplyResult
 
   /** Another trigger applied a wallpaper moments ago; this run did nothing. */
@@ -35,6 +45,10 @@ sealed interface ApplyResult {
  * Applies the next wallpaper of the carousel assigned to a target. The
  * orientation is read at apply time; static wallpapers do not change when the
  * device is rotated afterwards.
+ *
+ * Prepared wallpapers are cached as JPEG bytes instead of ARGB bitmaps, so the
+ * four Home/Lock and portrait/landscape entries stay well below 5 MB and the
+ * fast `setStream` path can reuse them directly.
  */
 class StaticWallpaperApplier(
   context: Context,
@@ -57,41 +71,41 @@ class StaticWallpaperApplier(
     val height: Int,
   )
 
-  private data class CacheEntry(val key: CacheKey, val bitmap: Bitmap)
+  private class EncodedWallpaper(
+    val jpeg: ByteArray,
+    val width: Int,
+    val height: Int,
+  )
+
+  private data class CacheEntry(val key: CacheKey, val encoded: EncodedWallpaper)
 
   private val preRendered = mutableMapOf<ApplyTarget, CacheEntry>()
   private val cacheLock = Any()
 
   fun clearPreRendered() {
-    synchronized(cacheLock) {
-      preRendered.values.forEach { it.bitmap.recycle() }
-      preRendered.clear()
-    }
+    synchronized(cacheLock) { preRendered.clear() }
   }
 
-  private fun takePreRendered(target: ApplyTarget, key: CacheKey): Bitmap? =
+  private fun takePreRendered(target: ApplyTarget, key: CacheKey): EncodedWallpaper? =
     synchronized(cacheLock) {
       val entry = preRendered[target] ?: return null
       preRendered.remove(target)
-      if (entry.key != key) {
-        entry.bitmap.recycle()
-        return null
-      }
-      entry.bitmap
+      if (entry.key != key) return null
+      entry.encoded
     }
 
   private fun hasPreRendered(target: ApplyTarget, key: CacheKey): Boolean =
     synchronized(cacheLock) { preRendered[target]?.key == key }
 
-  private fun storePreRendered(target: ApplyTarget, key: CacheKey, bitmap: Bitmap) {
+  private fun storePreRendered(target: ApplyTarget, key: CacheKey, encoded: EncodedWallpaper) {
     synchronized(cacheLock) {
-      preRendered.put(target, CacheEntry(key, bitmap))?.bitmap?.recycle()
+      preRendered[target] = CacheEntry(key, encoded)
     }
   }
 
   // Both orientations of the currently applied wallpaper. Rotating the tablet
-  // then only needs to set the cached bitmap instead of re-rendering it.
-  private val orientationCache = mutableMapOf<ApplyTarget, MutableMap<CacheKey, Bitmap>>()
+  // then only needs to write cached JPEG bytes instead of re-rendering.
+  private val orientationCache = mutableMapOf<ApplyTarget, MutableMap<CacheKey, EncodedWallpaper>>()
   private val orientationGeneration = mutableMapOf<ApplyTarget, Long>()
 
   private fun currentGeneration(target: ApplyTarget): Long =
@@ -104,39 +118,163 @@ class StaticWallpaperApplier(
       next
     }
 
-  private fun cachedOrientation(target: ApplyTarget, key: CacheKey): Bitmap? =
+  private fun cachedOrientation(target: ApplyTarget, key: CacheKey): EncodedWallpaper? =
     synchronized(cacheLock) { orientationCache[target]?.get(key) }
 
   private fun storeOrientation(
     target: ApplyTarget,
     key: CacheKey,
-    bitmap: Bitmap,
+    encoded: EncodedWallpaper,
     generation: Long,
   ) {
     synchronized(cacheLock) {
-      if ((orientationGeneration[target] ?: 0L) != generation) {
-        bitmap.recycle()
-        return
-      }
+      if ((orientationGeneration[target] ?: 0L) != generation) return
       val map = orientationCache.getOrPut(target) { mutableMapOf() }
-      if (map.containsKey(key)) {
-        bitmap.recycle()
-        return
-      }
-      map[key] = bitmap
+      if (map.containsKey(key)) return
+      map[key] = encoded
     }
   }
 
   private fun clearOrientation(target: ApplyTarget) {
-    synchronized(cacheLock) {
-      orientationCache.remove(target)?.values?.forEach { it.recycle() }
+    synchronized(cacheLock) { orientationCache.remove(target) }
+  }
+
+  private fun encode(bitmap: Bitmap): EncodedWallpaper? {
+    return try {
+      val output = ByteArrayOutputStream()
+      val ok = bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)
+      val jpeg = output.toByteArray()
+      if (!ok || jpeg.isEmpty()) {
+        null
+      } else {
+        EncodedWallpaper(jpeg, bitmap.width, bitmap.height)
+      }
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  private fun decode(encoded: EncodedWallpaper): Bitmap? = try {
+    BitmapFactory.decodeByteArray(
+      encoded.jpeg,
+      0,
+      encoded.jpeg.size,
+      BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 },
+    )
+  } catch (_: Exception) {
+    null
+  }
+
+  private fun renderEncoded(
+    variant: Variant,
+    width: Int,
+    height: Int,
+  ): EncodedWallpaper? {
+    val bitmap = WallpaperRenderer.render(
+      file = imageStore.file(variant.fileName),
+      variant = variant,
+      targetWidth = width,
+      targetHeight = height,
+    ) ?: return null
+    return try {
+      encode(bitmap)
+    } finally {
+      bitmap.recycle()
+    }
+  }
+
+  private fun writeStream(
+    manager: WallpaperManager,
+    encoded: EncodedWallpaper,
+    flags: Int,
+  ): Boolean = try {
+    manager.setStream(ByteArrayInputStream(encoded.jpeg), null, false, flags)
+    true
+  } catch (_: Exception) {
+    false
+  }
+
+  /**
+   * Writes [variant] to the wallpaper manager and returns the encoded JPEG that
+   * can be cached. [cached] is tried first, then a fresh render is encoded.
+   */
+  private fun writeWallpaper(
+    manager: WallpaperManager,
+    flags: Int,
+    variant: Variant,
+    width: Int,
+    height: Int,
+    cached: EncodedWallpaper?,
+  ): EncodedWallpaper? {
+    val useJpeg = repository.state.value?.jpegWallpaperWrite == true
+
+    if (cached != null) {
+      if (useJpeg && writeStream(manager, cached, flags)) {
+        return cached
+      }
+      val bitmap = decode(cached)
+      if (bitmap != null) {
+        try {
+          manager.setBitmap(bitmap, null, false, flags)
+          return cached
+        } catch (_: Exception) {
+          // Fall through to a fresh render.
+        } finally {
+          bitmap.recycle()
+        }
+      }
+    }
+
+    val bitmap = WallpaperRenderer.render(
+      file = imageStore.file(variant.fileName),
+      variant = variant,
+      targetWidth = width,
+      targetHeight = height,
+    ) ?: return null
+    try {
+      var encoded: EncodedWallpaper? = null
+      if (useJpeg) {
+        encoded = encode(bitmap)
+        if (encoded != null && writeStream(manager, encoded, flags)) {
+          return encoded
+        }
+      }
+      manager.setBitmap(bitmap, null, false, flags)
+      return encoded ?: encode(bitmap)
+    } finally {
+      bitmap.recycle()
+    }
+  }
+
+  private fun preRenderOrientation(
+    target: ApplyTarget,
+    state: AppState,
+    carousel: Carousel,
+    orientation: Orientation,
+    width: Int,
+    height: Int,
+    generation: Long,
+  ) {
+    val item = when (
+      val choice = Playback.rotationChoice(state, state.config(target), carousel, orientation)
+    ) {
+      is RotationChoice.Keep -> choice.item
+      is RotationChoice.Advance -> choice.item
+      is RotationChoice.Fallback -> PlaybackItem(choice.wallpaper, choice.variant)
+      RotationChoice.None -> return
+    }
+    val key = CacheKey(carousel.id, item.wallpaper.id, item.variant, orientation, width, height)
+    if (cachedOrientation(target, key) != null) return
+    appScope.launch(Dispatchers.Default) {
+      val encoded = renderEncoded(item.variant, width, height) ?: return@launch
+      storeOrientation(target, key, encoded, generation)
     }
   }
 
   private fun preRenderOtherOrientation(
     target: ApplyTarget,
-    carouselId: String?,
-    wallpaper: Wallpaper,
+    state: AppState,
+    carousel: Carousel,
     orientation: Orientation,
     width: Int,
     height: Int,
@@ -147,47 +285,34 @@ class StaticWallpaperApplier(
     } else {
       Orientation.PORTRAIT
     }
-    val otherVariant = wallpaper.variant(otherOrientation) ?: return
-    val otherWidth = height
-    val otherHeight = width
-    val key = CacheKey(carouselId, wallpaper.id, otherVariant, otherOrientation, otherWidth, otherHeight)
-    if (cachedOrientation(target, key) != null) return
-    appScope.launch(Dispatchers.Default) {
-      val otherBitmap = WallpaperRenderer.render(
-        file = imageStore.file(otherVariant.fileName),
-        variant = otherVariant,
-        targetWidth = otherWidth,
-        targetHeight = otherHeight,
-      ) ?: return@launch
-      storeOrientation(target, key, otherBitmap, generation)
-    }
+    preRenderOrientation(
+      target = target,
+      state = state,
+      carousel = carousel,
+      orientation = otherOrientation,
+      width = height,
+      height = width,
+      generation = generation,
+    )
   }
 
-  private fun preRender(
+  private fun preRenderNext(
     target: ApplyTarget,
-    carouselId: String?,
-    candidates: List<Pair<Wallpaper, Variant>>,
+    carousel: Carousel,
+    items: List<PlaybackItem>,
     nextIndex: Int,
     orientation: Orientation,
     width: Int,
     height: Int,
   ) {
-    if (candidates.isEmpty() || repository.state.value?.preRenderNext != true) return
-    val (wallpaper, variant) = candidates[nextIndex % candidates.size]
-    val key = CacheKey(carouselId, wallpaper.id, variant, orientation, width, height)
+    if (items.isEmpty() || repository.state.value?.preRenderNext != true) return
+    val item = items[Playback.normalizedCursor(nextIndex, items.size)]
+    val key = CacheKey(carousel.id, item.wallpaper.id, item.variant, orientation, width, height)
     if (hasPreRendered(target, key)) return
     appScope.launch(Dispatchers.Default) {
-      val bitmap = WallpaperRenderer.render(
-        file = imageStore.file(variant.fileName),
-        variant = variant,
-        targetWidth = width,
-        targetHeight = height,
-      ) ?: return@launch
-      if (repository.state.value?.preRenderNext != true) {
-        bitmap.recycle()
-        return@launch
-      }
-      storePreRendered(target, key, bitmap)
+      val encoded = renderEncoded(item.variant, width, height) ?: return@launch
+      if (repository.state.value?.preRenderNext != true) return@launch
+      storePreRendered(target, key, encoded)
     }
   }
 
@@ -210,6 +335,7 @@ class StaticWallpaperApplier(
     val orientation = currentOrientation()
     val applied = mutableListOf<String>()
     var sawCarousel = false
+    var sawHiddenWallpapers = false
     var skipped = false
     var failure: Throwable? = null
 
@@ -224,86 +350,86 @@ class StaticWallpaperApplier(
         continue
       }
 
-      val candidates = carousel.wallpaperIds.mapNotNull { id ->
-        val wallpaper = state.wallpaper(id) ?: return@mapNotNull null
-        val variant = wallpaper.variant(orientation) ?: wallpaper.previewVariant()
-          ?: return@mapNotNull null
-        wallpaper to variant
-      }
-      if (candidates.isEmpty()) continue
-
-      val index = ((config.cursor % candidates.size) + candidates.size) % candidates.size
-      val (wallpaper, variant) = candidates[index]
-      val (screenWidth, screenHeight) = displaySize()
-      val cacheKey = CacheKey(
-        carouselId = config.carouselId,
-        wallpaperId = wallpaper.id,
-        variant = variant,
-        orientation = orientation,
-        width = screenWidth,
-        height = screenHeight,
-      )
-      val bitmap = (if (state.preRenderNext) takePreRendered(single, cacheKey) else null)
-        ?: WallpaperRenderer.render(
-          file = imageStore.file(variant.fileName),
-          variant = variant,
-          targetWidth = screenWidth,
-          targetHeight = screenHeight,
-        )
-      if (bitmap == null) {
-        failure = IllegalStateException("Unable to render ${variant.fileName}")
-        // Skip the unreadable entry so the carousel cannot get stuck on it.
-        repository.update { current ->
-          val updated = current.config(single).copy(cursor = index + 1)
-          current.withConfig(single, updated)
+      val items = Playback.items(state, carousel, orientation)
+      if (items.isEmpty()) {
+        if (carousel.wallpaperIds.any { state.wallpaper(it) != null }) {
+          sawHiddenWallpapers = true
         }
         continue
       }
 
-      var appliedOk = false
-      var cached = false
+      val index = Playback.normalizedCursor(config.cursor, items.size)
+      val item = items[index]
+      val (screenWidth, screenHeight) = displaySize()
+      val cacheKey = CacheKey(
+        carouselId = config.carouselId,
+        wallpaperId = item.wallpaper.id,
+        variant = item.variant,
+        orientation = orientation,
+        width = screenWidth,
+        height = screenHeight,
+      )
+      val cached = if (state.preRenderNext) takePreRendered(single, cacheKey) else null
+
       try {
-        val flags = if (single == ApplyTarget.LOCK) WallpaperManager.FLAG_LOCK else WallpaperManager.FLAG_SYSTEM
-        manager.setBitmap(bitmap, null, false, flags)
-        applied += wallpaper.displayName()
-        repository.update { current ->
-          val updated = current.config(single).copy(
+        val flags = if (single == ApplyTarget.LOCK) {
+          WallpaperManager.FLAG_LOCK
+        } else {
+          WallpaperManager.FLAG_SYSTEM
+        }
+        val encoded = writeWallpaper(
+          manager = manager,
+          flags = flags,
+          variant = item.variant,
+          width = screenWidth,
+          height = screenHeight,
+          cached = cached,
+        )
+        if (encoded == null) {
+          failure = IllegalStateException("Unable to render ${item.variant.fileName}")
+          // Skip the unreadable entry so the carousel cannot get stuck on it.
+          repository.update { current ->
+            val updated = current.config(single).copy(cursor = index + 1)
+            current.withConfig(single, updated)
+          }
+          continue
+        }
+
+        val updated = repository.update { current ->
+          val configNow = current.config(single).copy(
             cursor = index + 1,
             lastAppliedAt = System.currentTimeMillis(),
-            lastWallpaperId = wallpaper.id,
+            lastWallpaperId = item.wallpaper.id,
             lastOrientation = orientation,
           )
-          current.withConfig(single, updated)
+          current.withConfig(single, configNow)
         }
-        val cacheGeneration = newGeneration(single)
+        val generation = newGeneration(single)
         clearOrientation(single)
-        storeOrientation(single, cacheKey, bitmap, cacheGeneration)
-        cached = true
+        storeOrientation(single, cacheKey, encoded, generation)
         preRenderOtherOrientation(
           target = single,
-          carouselId = config.carouselId,
-          wallpaper = wallpaper,
+          state = updated,
+          carousel = carousel,
           orientation = orientation,
           width = screenWidth,
           height = screenHeight,
-          generation = cacheGeneration,
+          generation = generation,
         )
-        appliedOk = true
+        if (updated.preRenderNext) {
+          preRenderNext(
+            target = single,
+            carousel = carousel,
+            items = items,
+            nextIndex = index + 1,
+            orientation = orientation,
+            width = screenWidth,
+            height = screenHeight,
+          )
+        }
+        applied += item.wallpaper.displayName()
       } catch (error: Exception) {
         failure = error
-      } finally {
-        if (!cached) bitmap.recycle()
-      }
-      if (appliedOk && state.preRenderNext) {
-        preRender(
-          target = single,
-          carouselId = config.carouselId,
-          candidates = candidates,
-          nextIndex = index + 1,
-          orientation = orientation,
-          width = screenWidth,
-          height = screenHeight,
-        )
       }
     }
 
@@ -312,14 +438,16 @@ class StaticWallpaperApplier(
       !sawCarousel -> ApplyResult.NoCarousel
       failure != null -> ApplyResult.Failed(failure)
       skipped -> ApplyResult.Skipped
+      sawHiddenWallpapers -> ApplyResult.NoVisibleWallpapers
       else -> ApplyResult.NoWallpapers
     }
   }
 
   /**
-   * Re-applies the last wallpaper of each target using the current orientation,
-   * without advancing the cursor. Used after a rotation so Android does not
-   * keep showing the portrait crop in landscape (or vice versa).
+   * Re-applies each target using the current orientation, without advancing the
+   * cursor when the current wallpaper is still allowed in the new view. If it is
+   * hidden, the next visible wallpaper is used; if the view allows none, the
+   * previous image is reused centred so nothing is left blank.
    */
   suspend fun reapplyCurrent(target: ApplyTarget): ApplyResult =
     withContext(Dispatchers.IO) {
@@ -327,8 +455,9 @@ class StaticWallpaperApplier(
     }
 
   /**
-   * Fills the orientation cache for the current wallpaper without touching the
-   * visible wallpaper. Called on app start so the first rotation is fast.
+   * Fills the orientation cache for the image that the next rotation will use,
+   * without touching the visible wallpaper. Called on app start so the first
+   * rotation is fast.
    */
   suspend fun warmOrientationCache(target: ApplyTarget) =
     withContext(Dispatchers.IO) {
@@ -336,6 +465,11 @@ class StaticWallpaperApplier(
         val state = repository.ensureLoaded()
         val orientation = currentOrientation()
         val (width, height) = displaySize()
+        val otherOrientation = if (orientation == Orientation.PORTRAIT) {
+          Orientation.LANDSCAPE
+        } else {
+          Orientation.PORTRAIT
+        }
         val targets = when (target) {
           ApplyTarget.BOTH -> listOf(ApplyTarget.HOME, ApplyTarget.LOCK)
           else -> listOf(target)
@@ -344,25 +478,13 @@ class StaticWallpaperApplier(
           val config = state.config(single)
           if (config.lastAppliedAt <= 0L) continue
           val carousel = state.carousel(config.carouselId) ?: continue
-          val candidates = carousel.wallpaperIds.mapNotNull { id ->
-            val wallpaper = state.wallpaper(id) ?: return@mapNotNull null
-            val variant = wallpaper.variant(orientation) ?: wallpaper.previewVariant()
-              ?: return@mapNotNull null
-            wallpaper to variant
-          }
-          if (candidates.isEmpty()) continue
-          val index = config.lastWallpaperId
-            ?.let { id -> candidates.indexOfFirst { it.first.id == id } }
-            ?.takeIf { it >= 0 }
-            ?: (((config.cursor - 1) % candidates.size + candidates.size) % candidates.size)
-          val (wallpaper, _) = candidates[index]
-          preRenderOtherOrientation(
+          preRenderOrientation(
             target = single,
-            carouselId = config.carouselId,
-            wallpaper = wallpaper,
-            orientation = orientation,
-            width = width,
-            height = height,
+            state = state,
+            carousel = carousel,
+            orientation = otherOrientation,
+            width = height,
+            height = width,
             generation = currentGeneration(single),
           )
         }
@@ -391,76 +513,70 @@ class StaticWallpaperApplier(
       val carousel = state.carousel(config.carouselId) ?: continue
       sawCarousel = true
 
-      val candidates = carousel.wallpaperIds.mapNotNull { id ->
-        val wallpaper = state.wallpaper(id) ?: return@mapNotNull null
-        val variant = wallpaper.variant(orientation) ?: wallpaper.previewVariant()
-          ?: return@mapNotNull null
-        wallpaper to variant
+      val choice = Playback.rotationChoice(state, config, carousel, orientation)
+      val item = when (choice) {
+        is RotationChoice.Keep -> choice.item
+        is RotationChoice.Advance -> choice.item
+        is RotationChoice.Fallback -> PlaybackItem(choice.wallpaper, choice.variant)
+        RotationChoice.None -> continue
       }
-      if (candidates.isEmpty()) continue
-
-      val index = config.lastWallpaperId
-        ?.let { id -> candidates.indexOfFirst { it.first.id == id } }
-        ?.takeIf { it >= 0 }
-        ?: (((config.cursor - 1) % candidates.size + candidates.size) % candidates.size)
-      val (wallpaper, variant) = candidates[index]
       val (screenWidth, screenHeight) = displaySize()
       val cacheKey = CacheKey(
         carouselId = config.carouselId,
-        wallpaperId = wallpaper.id,
-        variant = variant,
+        wallpaperId = item.wallpaper.id,
+        variant = item.variant,
         orientation = orientation,
         width = screenWidth,
         height = screenHeight,
       )
-      val cachedBitmap = cachedOrientation(single, cacheKey)
-      val bitmap = cachedBitmap ?: WallpaperRenderer.render(
-        file = imageStore.file(variant.fileName),
-        variant = variant,
-        targetWidth = screenWidth,
-        targetHeight = screenHeight,
-      ) ?: continue
-      var keep = cachedBitmap != null
+      val cached = cachedOrientation(single, cacheKey)
 
       try {
-        val flags = if (single == ApplyTarget.LOCK) WallpaperManager.FLAG_LOCK else WallpaperManager.FLAG_SYSTEM
-        manager.setBitmap(bitmap, null, false, flags)
-        applied += wallpaper.displayName()
-        repository.update { current ->
-          val updated = current.config(single).copy(
-            lastWallpaperId = wallpaper.id,
-            lastOrientation = orientation,
-          )
-          current.withConfig(single, updated)
-        }
-        if (cachedBitmap == null) {
-          val generation = currentGeneration(single)
-          storeOrientation(single, cacheKey, bitmap, generation)
-          keep = true
-          preRenderOtherOrientation(
-            target = single,
-            carouselId = config.carouselId,
-            wallpaper = wallpaper,
-            orientation = orientation,
-            width = screenWidth,
-            height = screenHeight,
-            generation = generation,
-          )
+        val flags = if (single == ApplyTarget.LOCK) {
+          WallpaperManager.FLAG_LOCK
         } else {
-          preRenderOtherOrientation(
-            target = single,
-            carouselId = config.carouselId,
-            wallpaper = wallpaper,
-            orientation = orientation,
-            width = screenWidth,
-            height = screenHeight,
-            generation = currentGeneration(single),
-          )
+          WallpaperManager.FLAG_SYSTEM
         }
+        val encoded = writeWallpaper(
+          manager = manager,
+          flags = flags,
+          variant = item.variant,
+          width = screenWidth,
+          height = screenHeight,
+          cached = cached,
+        ) ?: continue
+
+        val now = System.currentTimeMillis()
+        val updated = repository.update { current ->
+          val configNow = current.config(single)
+          val next = when (choice) {
+            is RotationChoice.Advance -> configNow.copy(
+              cursor = choice.index + 1,
+              lastAppliedAt = now,
+              lastWallpaperId = item.wallpaper.id,
+              lastOrientation = orientation,
+            )
+            else -> configNow.copy(
+              lastWallpaperId = item.wallpaper.id,
+              lastOrientation = orientation,
+            )
+          }
+          current.withConfig(single, next)
+        }
+        val generation = currentGeneration(single)
+        storeOrientation(single, cacheKey, encoded, generation)
+        preRenderOtherOrientation(
+          target = single,
+          state = updated,
+          carousel = carousel,
+          orientation = orientation,
+          width = screenWidth,
+          height = screenHeight,
+          generation = generation,
+        )
+        applied += item.wallpaper.displayName()
       } catch (error: Exception) {
         failure = error
-      } finally {
-        if (!keep) bitmap.recycle()
       }
     }
 

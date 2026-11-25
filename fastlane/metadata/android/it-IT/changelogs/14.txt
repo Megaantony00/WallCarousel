@@ -1,0 +1,6 @@
+- Visibilità per sfondo: solo verticale, solo orizzontale o entrambe.
+- Bande sfocate: l'immagine resta intera e i lati mancanti sono riempiti da una copia sfocata, in stile Scure o Chiare.
+- La rotazione mantiene lo sfondo attuale se la nuova vista lo permette, altrimenti passa al prossimo visibile. Se non ce ne sono, l'immagine precedente resta centrata.
+- Nuova scrittura veloce JPEG, attiva di default, e cache JPEG ridotta per rotazioni più rapide.
+- I caroselli avvisano quando nessuno sfondo è visibile nella vista corrente.
+- Nuova azione per creare una copia di un carosello.

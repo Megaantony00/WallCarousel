@@ -25,6 +25,13 @@ enum class ThemeMode {
   DARK,
 }
 
+/** Colour treatment of the blurred fill used by the [Variant.blurredBands] mode. */
+@Serializable
+enum class BandStyle {
+  DARK,
+  LIGHT,
+}
+
 /**
  * Independent triggers for a target. Any combination is valid; when all of
  * them are off the target advances only when the user asks.
@@ -75,6 +82,10 @@ data class Variant(
   val contrast: Float = 1f,
   val saturation: Float = 1f,
   val blur: Int = 0,
+  /** Keeps the whole image and fills the missing sides with a blurred copy. */
+  val blurredBands: Boolean = false,
+  /** Colour treatment of the blurred fill, used only when [blurredBands] is on. */
+  val bandStyle: BandStyle = BandStyle.DARK,
 ) : java.io.Serializable
 
 /** A wallpaper with optional portrait and landscape versions. */
@@ -87,6 +98,10 @@ data class Wallpaper(
   val importedAt: Long = 0L,
   /** Name suggested by the gallery or the import time; used as a placeholder. */
   val sourceName: String = "",
+  /** Whether carousels may show this wallpaper with the device in portrait. */
+  val visiblePortrait: Boolean = true,
+  /** Whether carousels may show this wallpaper with the device in landscape. */
+  val visibleLandscape: Boolean = true,
 ) {
   /** Custom name when set, otherwise the gallery/import name. */
   fun displayName(): String = name.ifBlank { sourceName }
@@ -98,11 +113,39 @@ data class Wallpaper(
 
   fun hasVariant(orientation: Orientation): Boolean = variant(orientation) != null
 
+  /** Visibility of this wallpaper in [orientation], independent of its variants. */
+  fun isVisibleIn(orientation: Orientation): Boolean = when (orientation) {
+    Orientation.PORTRAIT -> visiblePortrait
+    Orientation.LANDSCAPE -> visibleLandscape
+  }
+
+  fun hasAnyVisibleView(): Boolean = visiblePortrait || visibleLandscape
+
+  /**
+   * Restores the invariant that at least one view stays active. Used when
+   * reading old or hand-edited backups.
+   */
+  fun withGuaranteedVisibility(): Wallpaper =
+    if (hasAnyVisibleView()) this else copy(visiblePortrait = true)
+
   fun availableOrientations(): List<Orientation> =
     Orientation.entries.filter(::hasVariant)
 
   /** Variant used to draw a thumbnail, regardless of the current orientation. */
   fun previewVariant(): Variant? = portrait ?: landscape
+
+  /**
+   * Variant used by library cards: prefer a visible version without blurred
+   * bands, because usually one orientation uses bands and the other does not.
+   */
+  fun thumbnailVariant(): Variant? {
+    val visible = listOfNotNull(
+      if (visiblePortrait) portrait else null,
+      if (visibleLandscape) landscape else null,
+    )
+    val candidates = visible.ifEmpty { listOfNotNull(portrait, landscape) }
+    return candidates.firstOrNull { !it.blurredBands } ?: candidates.firstOrNull()
+  }
 }
 
 /** An ordered list of wallpapers. */
@@ -127,6 +170,7 @@ data class AppState(
   val wallpaperPalette: Boolean = false,
   val wallpaperPaletteTarget: ApplyTarget = ApplyTarget.HOME,
   val preRenderNext: Boolean = false,
+  val jpegWallpaperWrite: Boolean = true,
   val autoUpdateCheck: Boolean = false,
   val lastUpdateCheckAt: Long = 0L,
 ) {
@@ -163,6 +207,19 @@ data class AppState(
   /** Number of wallpapers of [carousel] that still exist in the library. */
   fun wallpaperCount(carousel: Carousel): Int =
     carousel.wallpaperIds.count { id -> wallpapers.any { it.id == id } }
+
+  /** Wallpapers of [carousel] that can be shown in [orientation]. */
+  fun visibleWallpapers(carousel: Carousel, orientation: Orientation): List<Wallpaper> =
+    carousel.wallpaperIds.mapNotNull(::wallpaper)
+      .filter { it.isVisibleIn(orientation) && it.previewVariant() != null }
+
+  /** True when [carousel] has at least one wallpaper for [orientation]. */
+  fun hasVisibleWallpaper(carousel: Carousel, orientation: Orientation): Boolean =
+    carousel.wallpaperIds.any { id ->
+      val wallpaper = wallpaper(id)
+      wallpaper != null && wallpaper.isVisibleIn(orientation) &&
+        wallpaper.previewVariant() != null
+    }
 
   /** True when Home or Lock advances on unlock and has a carousel assigned. */
   fun hasWakeTarget(): Boolean = listOf(home, lock).any { config ->

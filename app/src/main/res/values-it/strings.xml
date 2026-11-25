@@ -18,6 +18,8 @@
     <string name="new_carousel">Nuovo carosello</string>
     <string name="rename_carousel">Rinomina carosello</string>
     <string name="carousel_name">Nome</string>
+    <string name="duplicate_carousel">Crea copia</string>
+    <string name="carousel_copy_name">%1$s (copia)</string>
     <string name="create">Crea</string>
     <string name="cancel">Annulla</string>
     <string name="save">Salva</string>
@@ -51,6 +53,17 @@
 
     <string name="orientation_portrait">Verticale</string>
     <string name="orientation_landscape">Orizzontale</string>
+    <string name="visible_in">Visibile in</string>
+    <string name="visible_in_summary">Disattiva una vista per usare lo sfondo solo nell\'altra. Almeno una vista resta sempre attiva.</string>
+    <string name="blurred_bands">Bande sfocate</string>
+    <string name="blurred_bands_summary">Mantiene l\'immagine intera e riempie i lati mancanti con una copia sfocata.</string>
+    <string name="band_style">Stile bande</string>
+    <string name="band_style_dark">Scure</string>
+    <string name="band_style_light">Chiare</string>
+    <string name="no_visible_wallpapers_this_view">Nessuno sfondo visibile in questa vista</string>
+    <string name="no_visible_wallpapers_this_view_body">La rotazione mantiene l\'ultima immagine centrata. Attiva questa vista per almeno uno sfondo.</string>
+    <string name="visibility_portrait_only">Solo verticale</string>
+    <string name="visibility_landscape_only">Solo orizzontale</string>
     <string name="wallpaper_preview">Anteprima sfondo</string>
     <string name="no_preview">Nessuna anteprima disponibile</string>
     <string name="drag_focus_hint">Trascina con un dito per spostare, usa due dita per lo zoom. Scorri fuori dalla foto per cambiare sfondo. La griglia resta solo nell\'anteprima.</string>
@@ -118,6 +131,8 @@
     <string name="palette_target_lock">Schermata di blocco</string>
     <string name="pre_render_next">Pre-renderizza lo sfondo successivo</string>
     <string name="pre_render_next_summary">Prepara lo sfondo successivo in background per cambiare più velocemente. Usa più CPU, memoria e batteria. Nessun permesso aggiuntivo.</string>
+    <string name="fast_wallpaper_write">Scrittura veloce (JPEG)</string>
+    <string name="fast_wallpaper_write_summary">Applica lo sfondo come JPEG qualità 95. Gli originali non vengono modificati.</string>
     <string name="data">Dati</string>
     <string name="export_data">Esporta dati</string>
     <string name="export_data_summary">Crea un file zip con i metadati e le immagini originali. Salvalo dove preferisci.</string>

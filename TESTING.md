@@ -75,6 +75,36 @@ Con keyguard "Scorri" (PIN rimosso per il debug) e Home su "A ogni sblocco":
 - La chiave di test è stata usata solo per la verifica e non fa parte del
   progetto; il tablet è stato riportato alla build debug con i dati di prova.
 
+## Visibilità, bande e rotazione (1.13)
+
+1. Editor sfondo: "Visibile in" con Verticale/Orizzontale; l'ultima vista attiva
+   non si può disattivare (chip disabilitato). Il badge "Solo verticale" compare
+   nella libreria.
+2. Miniatura della libreria: usa il render effettivo della variante scelta
+   (crop, zoom, filtri e bande), non la foto originale. Se entrambe le viste
+   sono attive preferisce la variante senza bande; se una sola è attiva usa
+   quella. Il render avviene a 2× rispetto alla card (max 1024 px) e Compose lo
+   riduce, per evitare l'aliasing sulle linee sottili. La cache viene svuotata
+   dopo ogni modifica.
+3. Bande sfocate: anteprima e sfondo applicato con immagine intera centrata e
+   lati riempiti da copia sfocata. Stili Scure (fondo scure) e Chiare (fondo
+   chiare) verificati su un'immagine verticale applicata in orizzontale.
+4. Rotazione con sfondo visibile in entrambe le viste: stesso sfondo, variante
+   giusta, cache JPEG (0,3–0,7 s per target con `setStream`).
+5. Rotazione con sfondo visibile solo in verticale: in orizzontale passa al
+   successivo sfondo visibile e aggiorna il cursore; tornando in verticale
+   mantiene quello nuovo.
+6. Rotazione quando nessuno sfondo è visibile nella nuova vista: l'immagine
+   precedente resta centrata/zoomata, senza bande e senza avviso a runtime.
+7. Avviso "Nessuno sfondo visibile in questa vista" nella scheda del carosello e
+   nell'editor del carosello, solo nella UI e solo per la vista corrente.
+8. Scrittura veloce JPEG attiva/disattiva: con l'opzione off il log passa a
+   `setBitmap` (~3,4 s), con l'opzione on a `setStream` (~0,4–1,0 s). Nessun
+   crash; auto-rotazione ripristinata.
+9. Carosello di prova eliminato, assegnazione Home ripristinata su "Hello
+   Carosello Home", visibilità e bande degli sfondi di prova riportate ai valori
+   originali.
+
 ## Da eseguire
 
 - Samsung DeX: richiede l'attivazione manuale dal tablet (pannello rapido o

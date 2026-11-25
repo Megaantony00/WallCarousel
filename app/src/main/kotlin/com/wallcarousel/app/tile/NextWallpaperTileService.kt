@@ -25,11 +25,12 @@ abstract class NextWallpaperTileService(
     super.onClick()
     val application = application as? WallCarouselApplication ?: return
     application.container.appScope.launch {
-      val message = try {
+      val message: String? = try {
         when (val result = application.container.applier.applyNext(target)) {
           is ApplyResult.Applied -> getString(R.string.tile_applied)
-          ApplyResult.NoCarousel, ApplyResult.NoWallpapers, ApplyResult.Skipped ->
+          ApplyResult.NoCarousel, ApplyResult.NoWallpapers ->
             getString(R.string.tile_assign_first)
+          ApplyResult.NoVisibleWallpapers, ApplyResult.Skipped -> null
           ApplyResult.NotSupported -> getString(R.string.tile_not_supported)
           is ApplyResult.Failed -> getString(R.string.apply_failed)
         }
@@ -37,7 +38,9 @@ abstract class NextWallpaperTileService(
         getString(R.string.apply_failed)
       }
       withContext(Dispatchers.Main) {
-        Toast.makeText(this@NextWallpaperTileService, message, Toast.LENGTH_SHORT).show()
+        message?.let {
+          Toast.makeText(this@NextWallpaperTileService, it, Toast.LENGTH_SHORT).show()
+        }
         updateTileState()
       }
     }

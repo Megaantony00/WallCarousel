@@ -5,6 +5,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.wallcarousel.app.R
 import com.wallcarousel.app.WallCarouselApplication
 import com.wallcarousel.app.data.ImportedImage
 import com.wallcarousel.app.data.model.ApplyTarget
@@ -16,6 +17,7 @@ import com.wallcarousel.app.data.model.Variant
 import com.wallcarousel.app.data.model.Wallpaper
 import com.wallcarousel.app.wallpaper.ApplyResult
 import com.wallcarousel.app.wallpaper.ThumbnailLoader
+import com.wallcarousel.app.wallpaper.WallpaperPreviewLoader
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -114,8 +116,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
               if (item.id != wallpaperId) {
                 item
               } else when (orientation) {
-                Orientation.PORTRAIT -> item.copy(portrait = variant)
-                Orientation.LANDSCAPE -> item.copy(landscape = variant)
+                Orientation.PORTRAIT -> item.copy(
+                  portrait = variant,
+                  visiblePortrait = true,
+                )
+                Orientation.LANDSCAPE -> item.copy(
+                  landscape = variant,
+                  visibleLandscape = true,
+                )
               }
             },
           )
@@ -124,6 +132,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
           container.imageStore.delete(previous.fileName)
         }
         ThumbnailLoader.clear()
+        WallpaperPreviewLoader.clear()
         _message.value = UiMessage.Imported(1)
       } catch (error: Exception) {
         _message.value = UiMessage.ImportFailed
@@ -138,15 +147,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     name: String,
     orientation: Orientation,
     variant: Variant?,
+    visiblePortrait: Boolean,
+    visibleLandscape: Boolean,
   ) {
     viewModelScope.launch {
+      val (portraitVisible, landscapeVisible) = if (visiblePortrait || visibleLandscape) {
+        visiblePortrait to visibleLandscape
+      } else {
+        true to false
+      }
       repository.update { current ->
         current.copy(
           wallpapers = current.wallpapers.map { wallpaper ->
             if (wallpaper.id != wallpaperId) {
               wallpaper
             } else {
-              val renamed = wallpaper.copy(name = name.trim())
+              val renamed = wallpaper.copy(
+                name = name.trim(),
+                visiblePortrait = portraitVisible,
+                visibleLandscape = landscapeVisible,
+              )
               if (variant == null) {
                 renamed
               } else when (orientation) {
@@ -157,6 +177,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
           },
         )
       }
+      WallpaperPreviewLoader.clear()
     }
   }
 
@@ -184,6 +205,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
       }
       files.forEach(container.imageStore::delete)
       ThumbnailLoader.clear()
+      WallpaperPreviewLoader.clear()
       container.scheduler.sync(updated)
     }
   }
@@ -200,6 +222,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             createdAt = System.currentTimeMillis(),
           ),
         )
+      }
+    }
+  }
+
+  fun duplicateCarousel(carouselId: String) {
+    viewModelScope.launch {
+      val state = repository.ensureLoaded()
+      val carousel = state.carousels.firstOrNull { it.id == carouselId } ?: return@launch
+      val copyName = getApplication<Application>()
+        .getString(R.string.carousel_copy_name, carousel.name)
+      repository.update { current ->
+        val original = current.carousels.firstOrNull { it.id == carouselId }
+          ?: return@update current
+        val copy = original.copy(
+          id = UUID.randomUUID().toString(),
+          name = uniqueName(copyName, current.carousels.map { it.name }),
+          createdAt = System.currentTimeMillis(),
+        )
+        val index = current.carousels.indexOfFirst { it.id == carouselId }
+        val carousels = current.carousels.toMutableList()
+        carousels.add(if (index >= 0) index + 1 else carousels.size, copy)
+        current.copy(carousels = carousels)
       }
     }
   }
@@ -373,8 +417,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
       try {
         _message.value = when (val result = container.applier.applyNext(target)) {
           is ApplyResult.Applied -> UiMessage.Applied(target)
-          ApplyResult.NoCarousel, ApplyResult.NoWallpapers, ApplyResult.Skipped ->
-            UiMessage.ApplyUnavailable
+          ApplyResult.NoCarousel, ApplyResult.NoWallpapers -> UiMessage.ApplyUnavailable
+          ApplyResult.NoVisibleWallpapers, ApplyResult.Skipped -> null
           ApplyResult.NotSupported -> UiMessage.NotSupported
           is ApplyResult.Failed -> UiMessage.ApplyFailed
         }
@@ -416,6 +460,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     viewModelScope.launch {
       repository.update { it.copy(preRenderNext = enabled) }
       if (!enabled) container.applier.clearPreRendered()
+    }
+  }
+
+  fun setJpegWallpaperWrite(enabled: Boolean) {
+    viewModelScope.launch {
+      repository.update { it.copy(jpegWallpaperWrite = enabled) }
     }
   }
 
@@ -464,6 +514,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         repository.reset()
         container.imageStore.deleteAll()
         ThumbnailLoader.clear()
+        WallpaperPreviewLoader.clear()
         _message.value = UiMessage.DataDeleted
       } finally {
         _busy.value = false

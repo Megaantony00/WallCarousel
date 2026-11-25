@@ -153,6 +153,11 @@ class StateRepository(context: Context) {
     var changed = false
     val wallpapers = state.wallpapers.map { wallpaper ->
       var current = wallpaper
+      val visible = current.withGuaranteedVisibility()
+      if (visible != current) {
+        current = visible
+        changed = true
+      }
       if (current.portrait == null && current.landscape != null) {
         current = current.copy(portrait = current.landscape)
         changed = true

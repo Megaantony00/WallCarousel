@@ -10,18 +10,26 @@ are bugs in the UI: they are trade-offs of static wallpapers and of Samsung's th
 
 Android stores **one bitmap per target** (Home and Lock). When the wallpaper is applied,
 `StaticWallpaperApplier` renders the variant for the orientation that is active at that moment
-and calls `WallpaperManager.setBitmap`.
+and writes it with `WallpaperManager.setStream` as JPEG quality 95 by default. The bitmap
+compatibility path (`setBitmap`) remains available in Settings.
 
-To avoid showing the old crop after a rotation, the app keeps the current wallpaper in memory in
-both orientations:
+To avoid showing the old crop after a rotation, the app keeps prepared images in memory:
 
+- `Wallpaper.visiblePortrait` and `Wallpaper.visibleLandscape` decide in which views a wallpaper
+  may appear. At least one view always stays active.
 - `TargetConfig.lastWallpaperId` and `TargetConfig.lastOrientation` record what was applied.
-- `StaticWallpaperApplier.orientationCache` holds up to four bitmaps: Home/Lock × portrait/landscape
-  (about 80 MB at 2880×1800 ARGB_8888). It is memory-only and is lost when the process dies.
+- `Playback.rotationChoice()` keeps the current wallpaper when the new view allows it, otherwise
+  advances to the next visible wallpaper. If the view allows none, it reuses the previous image,
+  centred with bands off, so the screen never goes blank.
+- `StaticWallpaperApplier.orientationCache` holds up to four **JPEG byte arrays**:
+  Home/Lock × portrait/landscape. They are memory-only and are lost when the process dies.
+  Depending on image detail they are roughly 0.2–3 MB each, so four entries stay far below the
+  ~80 MB of the old ARGB bitmap cache.
 - `Application.onConfigurationChanged` calls `reapplyCurrent()` for the target that is visible
   first (Lock when the keyguard is showing, Home otherwise), then for the other target. It uses
-  the cached bitmap instead of re-rendering it.
-- `warmOrientationCache()` runs on app start to prepare the other orientation in the background.
+  the cached JPEG for `setStream` when the key matches.
+- `warmOrientationCache()` runs on app start and prepares the exact image the next rotation will
+  use, including the fallback image when the other view has no visible wallpaper.
 - `preRenderOtherOrientation()` prepares the opposite orientation after every apply or reapply, so
   the next rotation is a cache hit.
 - The cache is replaced when a new wallpaper is applied for that target. It is not cleared by
@@ -31,32 +39,29 @@ both orientations:
 
 Samsung Galaxy Tab S10 FE+ 5G, Android 16, 2880×1800:
 
-- app-side pre-render of one orientation: about **0.2–0.3 s**;
-- Android `WallpaperManager.setBitmap` for one target: about **2.5–3 s**;
-- visible Home is correct after about **3 s**; both Home and Lock after about **5 s**;
+- render plus JPEG encode of one orientation: about **0.2–0.4 s**;
+- cached `setStream` for one target: about **0.3–1.0 s**;
+- `setBitmap` compatibility path for one target: about **2.5–3.4 s**;
 - the first ~1 s can still show the system rotation transition with the old crop;
 - if the lock screen is already visible while rotating, the keyguard may keep the old bitmap until
   the screen is turned off and on again.
 
-The system write is the bottleneck. The app can prepare the crop earlier, but it cannot make the
-launcher or the keyguard redraw before `setBitmap` returns, and Android has no "per-orientation
-wallpaper slot" for static wallpapers.
+The system write is still the bottleneck. The app can prepare the image earlier, but it cannot
+make the launcher or the keyguard redraw before the write returns, and Android has no
+"per-orientation wallpaper slot" for static wallpapers.
 
 ### Possible fixes for a fork
 
-1. **One bitmap with blurred fill (no delay).**
-   Render a canvas that covers both aspect ratios: draw a scaled and blurred copy of the image as
-   the background, then draw the selected crop centred on top. The system crops the same bitmap in
-   both orientations, so no re-apply is needed. The trade-off is visible blurred bands in one
-   orientation. Start from `WallpaperRenderer.render()` and add a mode that receives both target
-   aspects; keep the existing render for the editor preview.
+1. **Persistent JPEG cache.**
+   Save the prepared orientations to disk so the first rotation after a process restart does not
+   need a render. Decoding and the system write remain, but the app-side work drops. Keep the
+   cache bounded and invalidate it when the source image or its recipe changes.
 
 2. **Live wallpaper (`WallpaperService`).**
    Draw the correct variant directly on the wallpaper surface and react to
-   `onSurfaceChanged`/`onVisibilityChanged`. Rotation becomes instant and there are no blurred
-   bands. Costs: a wallpaper service, battery/rendering care, and OEM support. On Samsung, a
-   third-party live wallpaper is generally not available on the lock screen, so this may only fix
-   Home.
+   `onSurfaceChanged`/`onVisibilityChanged`. Rotation becomes instant. Costs: a wallpaper service,
+   battery/rendering care, and OEM support. On Samsung, a third-party live wallpaper is generally
+   not available on the lock screen, so this may only fix Home.
 
 3. **Lower-resolution output.**
    Render at 1920–2560 px wide instead of 2880. The binder payload is smaller and `setBitmap` is

@@ -1,0 +1,6 @@
+- Per-wallpaper visibility: show a wallpaper only in portrait, only in landscape, or in both.
+- Blurred bands keep the whole image visible and fill the missing sides with a blurred copy, in Dark or Light style.
+- Rotation now keeps the current wallpaper when the new view allows it, otherwise picks the next visible one. If none is visible, the previous image stays centered.
+- New fast JPEG wallpaper write, enabled by default, and a small JPEG preload cache for faster rotation.
+- Carousel screen warns when no wallpaper is visible in the current view.
+- New copy action for carousels.

@@ -2,6 +2,7 @@
 package com.wallcarousel.app.ui.carousel
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -46,11 +48,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
 import com.wallcarousel.app.data.model.Carousel
+import com.wallcarousel.app.data.model.Orientation
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
 import com.wallcarousel.app.ui.components.EmptyState
@@ -80,6 +88,12 @@ fun CarouselListScreen(
     mutableStateOf(emptySet())
   }
   var showDeleteSelected by rememberSaveable { mutableStateOf(false) }
+  val configuration = LocalConfiguration.current
+  val orientation = if (configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+    Orientation.LANDSCAPE
+  } else {
+    Orientation.PORTRAIT
+  }
   val selected = state.carousel(selectedId)
   val selectionMode = selectedIds.isNotEmpty()
   val allIds = state.carousels.map { it.id }
@@ -133,6 +147,18 @@ fun CarouselListScreen(
               },
             ) {
               Text(stringResource(if (allSelected) R.string.deselect_all else R.string.select_all))
+            }
+            selectedCarousel?.let { carousel ->
+              val copyDescription = stringResource(R.string.duplicate_carousel)
+              IconButton(
+                onClick = {
+                  viewModel.duplicateCarousel(carousel.id)
+                  selectedIds = emptySet()
+                },
+                modifier = Modifier.semantics { contentDescription = copyDescription },
+              ) {
+                CopyIcon(modifier = Modifier.size(20.dp))
+              }
             }
             IconButton(
               onClick = { selectedCarousel?.let { viewModel.moveCarousel(it.id, up = true) } },
@@ -214,6 +240,7 @@ fun CarouselListScreen(
                 carousel = carousel,
                 state = state,
                 imageFile = viewModel::imageFile,
+                orientation = orientation,
                 selected = carousel.id in selectedIds,
                 onClick = { if (!selectionMode) selectedId = carousel.id },
               )
@@ -267,6 +294,7 @@ private fun CarouselCard(
   carousel: Carousel,
   state: AppState,
   imageFile: (String) -> File,
+  orientation: Orientation,
   selected: Boolean,
   onClick: () -> Unit,
 ) {
@@ -293,7 +321,7 @@ private fun CarouselCard(
           .clip(RoundedCornerShape(12.dp))
           .background(MaterialTheme.colorScheme.surfaceVariant),
       ) {
-        val first = carousel.wallpaperIds.firstOrNull()?.let(state::wallpaper)?.previewVariant()
+        val first = carousel.wallpaperIds.firstOrNull()?.let(state::wallpaper)?.thumbnailVariant()
         val bitmap = rememberThumbnail(first?.let { imageFile(it.fileName) }, 240)
         if (bitmap != null) {
           Image(
@@ -320,6 +348,15 @@ private fun CarouselCard(
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (carousel.wallpaperIds.isNotEmpty() &&
+          !state.hasVisibleWallpaper(carousel, orientation)
+        ) {
+          Text(
+            text = stringResource(R.string.no_visible_wallpapers_this_view),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+          )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           if (state.home.carouselId == carousel.id) {
             AssignmentBadge(stringResource(R.string.home_screen))
@@ -337,6 +374,31 @@ private fun CarouselCard(
         )
       }
     }
+  }
+}
+
+@Composable
+private fun CopyIcon(modifier: Modifier = Modifier) {
+  val color = LocalContentColor.current
+  Canvas(modifier = modifier) {
+    val stroke = 1.4.dp.toPx()
+    val corner = CornerRadius(2.5.dp.toPx())
+    val sheetWidth = size.width * 0.52f
+    val sheetHeight = size.height * 0.52f
+    drawRoundRect(
+      color = color,
+      topLeft = Offset(size.width * 0.10f, size.height * 0.10f),
+      size = Size(sheetWidth, sheetHeight),
+      cornerRadius = corner,
+      style = Stroke(width = stroke),
+    )
+    drawRoundRect(
+      color = color,
+      topLeft = Offset(size.width * 0.34f, size.height * 0.34f),
+      size = Size(sheetWidth, sheetHeight),
+      cornerRadius = corner,
+      style = Stroke(width = stroke),
+    )
   }
 }
 

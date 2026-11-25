@@ -39,29 +39,34 @@ in `fdroid/` for a future submission; the app is currently distributed on GitHub
 ## Features
 
 - Import photos from the system gallery. No storage permission is requested.
-- Keep separate portrait and landscape versions of the same wallpaper.
-- Non-destructive editing: focal point, zoom, brightness, contrast, saturation and blur.
+- Keep separate portrait and landscape versions of the same wallpaper, and choose whether each wallpaper is visible in portrait, landscape or both.
+- Non-destructive editing: focal point, zoom, brightness, contrast, saturation, blur and blurred bands (dark or light) that keep the whole image visible. Library cards show the rendered result, not the untouched photo.
 - Create ordered carousels and assign them to the home screen, the lock screen, or both.
 - Combine, independently for each screen, an interval (15 minutes or more), specific times of day
   and an advance on every unlock.
 - Advance the wallpaper from two Quick Settings tiles, one for home and one for lock.
 - Adaptive Compose UI for tablets, Samsung DeX, split-screen and pop-up view.
-- Automatic re-crop on rotation using the saved portrait and landscape versions. The app-side
-  switch is fast; Android still takes a few seconds to write the wallpaper (see limitations).
+- Automatic re-crop on rotation using the saved portrait and landscape versions. It keeps the
+  current wallpaper when the new view allows it, otherwise advances to the next visible one; if
+  none is visible, the previous image stays centered. The app-side switch is fast; Android still
+  takes a moment to write the wallpaper (see limitations).
+- Fast wallpaper write as JPEG quality 95 (on by default) with a compact JPEG preload cache, plus a
+  bitmap compatibility path. Originals are never modified.
 - Optional wallpaper-derived accent palette from the current Home or Lock wallpaper.
 - In-app language picker (Follow system, English, Italiano). More languages can be added with a
   `values-xx` translation.
 - In-app update: checks GitHub Releases and installs the new signed APK from the app.
-- Optional pre-rendering of the next wallpaper (uses more CPU, memory and battery).
+- Optional pre-rendering of the next wallpaper, stored as JPEG bytes (uses more CPU, memory and
+  battery).
 
 ## Current limitations
 
-- A static Android wallpaper stores a single bitmap. WallCarousel now re-applies the saved
-  portrait or landscape version when the device rotates, using an in-memory cache. The app-side
-  switch is fast, but Android still takes about 2.5–3 seconds per target to write the wallpaper:
-  on the target tablet the visible Home is correct after about 3 seconds and both Home and Lock
-  after about 5. If the process was killed, the re-apply happens when the app is opened. A lock
-  screen that is already visible may keep the old bitmap until the screen is turned off and on.
+- A static Android wallpaper stores a single bitmap. WallCarousel re-applies the saved portrait or
+  landscape version when the device rotates, using an in-memory JPEG cache. With the fast JPEG
+  write the app-side switch measured 0.4-1.0 s per target on the test tablet; writing the bitmap
+  through `setBitmap` takes about 2.5-3 s per target and remains available as a compatibility
+  option. If the process was killed, the re-apply happens when the app is opened. A lock screen
+  that is already visible may keep the old bitmap until the screen is turned off and on.
 - Samsung's system-wide Color palette is manual and does not reliably follow wallpaper changes;
   there is no public API for a third-party app to set it. The in-app "Wallpaper palette" only
   themes WallCarousel.
@@ -80,8 +85,8 @@ in `fdroid/` for a future submission; the app is currently distributed on GitHub
   `WallpaperManager` lock flag and reports an error if the system rejects the change.
 
 See [docs/LIMITATIONS.md](docs/LIMITATIONS.md) for implementation details, measured timings and
-ideas for forks (blurred-fill bitmap, live wallpaper, lower-resolution output, persistent cache,
-full Material tonal palette, per-app locales).
+ideas for forks (persistent cache, live wallpaper, lower-resolution output, full Material tonal
+palette, per-app locales).
 
 ## Build
 

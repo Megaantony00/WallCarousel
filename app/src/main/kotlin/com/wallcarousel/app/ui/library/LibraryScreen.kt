@@ -16,6 +16,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -62,6 +63,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
@@ -79,6 +81,7 @@ import com.wallcarousel.app.ui.components.ScreenHeader
 import com.wallcarousel.app.ui.components.SelectionGestureLayer
 import com.wallcarousel.app.ui.components.SelectionSetSaver
 import com.wallcarousel.app.ui.components.rememberThumbnail
+import com.wallcarousel.app.ui.components.rememberWallpaperPreview
 
 @Composable
 fun LibraryScreen(
@@ -302,7 +305,7 @@ private fun WallpaperCard(
   selected: Boolean,
   onClick: () -> Unit,
 ) {
-  val variant = wallpaper.previewVariant()
+  val variant = wallpaper.thumbnailVariant()
   val resolution = variant?.let { "${it.width}×${it.height}" }
 
   Card(
@@ -311,16 +314,21 @@ private fun WallpaperCard(
       .semantics { this.selected = selected }
       .clickable(onClick = onClick),
   ) {
-    Box(
+    BoxWithConstraints(
       modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(4f / 3f)
         .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-      val bitmap = rememberThumbnail(
-        file = variant?.let { imageFile(it.fileName) },
-        maxSize = 480,
-      )
+      val density = LocalDensity.current
+      val cardWidth = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
+      // Render at 2x and let Compose downscale: detailed line art stays clean.
+      val renderWidth = (cardWidth * 2).coerceAtMost(1024)
+      val renderHeight = (renderWidth * 3 / 4).coerceAtLeast(1)
+      val file = variant?.let { imageFile(it.fileName) }
+      val original = rememberThumbnail(file, renderWidth)
+      val rendered = rememberWallpaperPreview(file, variant, renderWidth, renderHeight)
+      val bitmap = rendered ?: original
       if (bitmap != null) {
         Image(
           bitmap = bitmap.asImageBitmap(),
@@ -328,6 +336,26 @@ private fun WallpaperCard(
           contentScale = ContentScale.Crop,
           modifier = Modifier.fillMaxSize(),
         )
+      }
+      if (!wallpaper.visiblePortrait || !wallpaper.visibleLandscape) {
+        Surface(
+          color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+          contentColor = MaterialTheme.colorScheme.onSurface,
+          shape = CircleShape,
+          modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+        ) {
+          Text(
+            text = stringResource(
+              if (wallpaper.visiblePortrait) {
+                R.string.visibility_portrait_only
+              } else {
+                R.string.visibility_landscape_only
+              },
+            ),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+          )
+        }
       }
       if (selected) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
@@ -400,7 +428,7 @@ private fun AddToCarouselDialog(
             val enabled = missing > 0
             val firstVariant = carousel.wallpaperIds
               .firstNotNullOfOrNull { state.wallpaper(it) }
-              ?.previewVariant()
+              ?.thumbnailVariant()
             val thumbnail = rememberThumbnail(
               file = firstVariant?.let { imageFile(it.fileName) },
               maxSize = 120,

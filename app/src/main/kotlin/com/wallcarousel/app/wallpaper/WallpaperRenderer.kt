@@ -3,6 +3,7 @@ package com.wallcarousel.app.wallpaper
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
@@ -10,6 +11,7 @@ import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import com.wallcarousel.app.data.model.BandStyle
 import com.wallcarousel.app.data.model.CropMath
 import com.wallcarousel.app.data.model.Variant
 import java.io.File
@@ -54,7 +56,26 @@ object WallpaperRenderer {
     }.getOrNull() ?: return null
 
     return try {
-      val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+      if (variant.blurredBands) {
+        renderBands(source, variant, width, height)
+      } else {
+        renderCover(source, variant, width, height)
+      }
+    } catch (error: OutOfMemoryError) {
+      null
+    } finally {
+      if (!source.isRecycled) source.recycle()
+    }
+  }
+
+  private fun renderCover(
+    source: Bitmap,
+    variant: Variant,
+    width: Int,
+    height: Int,
+  ): Bitmap? {
+    val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    try {
       val crop = CropMath.cropRect(
         sourceWidth = source.width,
         sourceHeight = source.height,
@@ -69,7 +90,10 @@ object WallpaperRenderer {
         crop.right.roundToInt().coerceAtMost(source.width),
         crop.bottom.roundToInt().coerceAtMost(source.height),
       )
-      if (sourceRect.width() <= 0 || sourceRect.height() <= 0) return null
+      if (sourceRect.width() <= 0 || sourceRect.height() <= 0) {
+        output.recycle()
+        return null
+      }
       val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG).apply {
         colorFilter = colorFilter(variant)
       }
@@ -79,17 +103,123 @@ object WallpaperRenderer {
         RectF(0f, 0f, width.toFloat(), height.toFloat()),
         paint,
       )
-      source.recycle()
-
       if (variant.blur > 0) {
         val radius = (variant.blur * width / 1080f).roundToInt().coerceIn(1, 50)
         BitmapBlur.blur(output, radius)
       }
+      return output
+    } catch (error: Throwable) {
+      output.recycle()
+      throw error
+    }
+  }
+
+  /**
+   * Keeps the whole image visible and fills the missing sides with a blurred,
+   * scaled copy of the same image. The style chooses whether that fill is
+   * darkened or lightened.
+   */
+  private fun renderBands(
+    source: Bitmap,
+    variant: Variant,
+    width: Int,
+    height: Int,
+  ): Bitmap? {
+    val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    return try {
+      val canvas = Canvas(output)
+      val filter = colorFilter(variant)
+      val focalX = variant.focalX.coerceIn(0f, 1f)
+      val focalY = variant.focalY.coerceIn(0f, 1f)
+
+      // Blur a small copy instead of the full panel: much cheaper and smooth
+      // once it is scaled back up.
+      val backgroundWidth = max(1, width / 8)
+      val backgroundHeight = max(
+        1,
+        (height.toFloat() * backgroundWidth / width).roundToInt(),
+      )
+      val background = Bitmap.createBitmap(
+        backgroundWidth,
+        backgroundHeight,
+        Bitmap.Config.ARGB_8888,
+      )
+      try {
+        val coverScale = max(
+          backgroundWidth.toFloat() / source.width,
+          backgroundHeight.toFloat() / source.height,
+        )
+        val backgroundWidthPx = source.width * coverScale
+        val backgroundHeightPx = source.height * coverScale
+        val backgroundLeft = (backgroundWidth - backgroundWidthPx) / 2f
+        val backgroundTop = (backgroundHeight - backgroundHeightPx) / 2f
+        Canvas(background).drawBitmap(
+          source,
+          null,
+          RectF(
+            backgroundLeft,
+            backgroundTop,
+            backgroundLeft + backgroundWidthPx,
+            backgroundTop + backgroundHeightPx,
+          ),
+          Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG).apply {
+            colorFilter = filter
+          },
+        )
+        BitmapBlur.blur(background, max(2, backgroundWidth / 24))
+        canvas.drawBitmap(
+          background,
+          null,
+          RectF(0f, 0f, width.toFloat(), height.toFloat()),
+          Paint(Paint.FILTER_BITMAP_FLAG),
+        )
+      } finally {
+        background.recycle()
+      }
+
+      val overlay = Paint().apply {
+        color = when (variant.bandStyle) {
+          BandStyle.DARK -> Color.argb(118, 0, 0, 0)
+          BandStyle.LIGHT -> Color.argb(92, 255, 255, 255)
+        }
+      }
+      canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlay)
+
+      val zoom = variant.zoom.coerceAtLeast(1f)
+      val fit = min(
+        width.toFloat() / source.width,
+        height.toFloat() / source.height,
+      ) * zoom
+      val foregroundWidth = source.width * fit
+      val foregroundHeight = source.height * fit
+      val foregroundLeft = width / 2f - focalX * foregroundWidth
+      val foregroundTop = height / 2f - focalY * foregroundHeight
+      val destination = RectF(
+        foregroundLeft,
+        foregroundTop,
+        foregroundLeft + foregroundWidth,
+        foregroundTop + foregroundHeight,
+      )
+      val foregroundPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG).apply {
+        colorFilter = filter
+      }
+      if (variant.blur > 0) {
+        val layer = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        try {
+          Canvas(layer).drawBitmap(source, null, destination, foregroundPaint)
+          val radius = (variant.blur * width / 1080f).roundToInt().coerceIn(1, 50)
+          BitmapBlur.blur(layer, radius)
+          canvas.drawBitmap(layer, 0f, 0f, null)
+        } finally {
+          layer.recycle()
+        }
+      } else {
+        canvas.drawBitmap(source, null, destination, foregroundPaint)
+      }
       output
-    } catch (error: OutOfMemoryError) {
-      null
-    } finally {
-      if (!source.isRecycled) source.recycle()
+    } catch (error: Throwable) {
+      output.recycle()
+      throw error
     }
   }
 

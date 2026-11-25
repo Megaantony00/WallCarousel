@@ -83,6 +83,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -95,6 +96,7 @@ import com.wallcarousel.app.R
 import com.wallcarousel.app.data.model.AppState
 import com.wallcarousel.app.data.model.ApplyTarget
 import com.wallcarousel.app.data.model.Carousel
+import com.wallcarousel.app.data.model.Orientation
 import com.wallcarousel.app.data.model.Schedule
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
@@ -128,6 +130,14 @@ fun CarouselEditorScreen(
     ApplyTarget.entries.firstOrNull { it.name == name }
   }
   val context = LocalContext.current
+  val configuration = LocalConfiguration.current
+  val orientation = if (configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+    Orientation.LANDSCAPE
+  } else {
+    Orientation.PORTRAIT
+  }
+  val noVisibleWallpaper = carousel.wallpaperIds.isNotEmpty() &&
+    !state.hasVisibleWallpaper(carousel, orientation)
   val notificationPermission = rememberLauncherForActivityResult(
     ActivityResultContracts.RequestPermission(),
   ) { }
@@ -221,6 +231,9 @@ fun CarouselEditorScreen(
               verticalArrangement = Arrangement.spacedBy(8.dp),
               modifier = Modifier.fillMaxSize(),
             ) {
+              if (noVisibleWallpaper) {
+                item(key = "orientation_warning") { OrientationWarningBanner() }
+              }
               wallpaperItems(
                 state,
                 carousel,
@@ -276,6 +289,9 @@ fun CarouselEditorScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
           ) {
+            if (noVisibleWallpaper) {
+              item(key = "orientation_warning") { OrientationWarningBanner() }
+            }
             item(key = "assignments") {
               AssignmentPanel(
                 state = state,
@@ -378,6 +394,31 @@ fun CarouselEditorScreen(
   }
 }
 
+@Composable
+private fun OrientationWarningBanner() {
+  Card(
+    modifier = Modifier.fillMaxWidth(),
+    colors = CardDefaults.cardColors(
+      containerColor = MaterialTheme.colorScheme.errorContainer,
+      contentColor = MaterialTheme.colorScheme.onErrorContainer,
+    ),
+  ) {
+    Column(
+      modifier = Modifier.padding(16.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      Text(
+        text = stringResource(R.string.no_visible_wallpapers_this_view),
+        style = MaterialTheme.typography.titleSmall,
+      )
+      Text(
+        text = stringResource(R.string.no_visible_wallpapers_this_view_body),
+        style = MaterialTheme.typography.bodySmall,
+      )
+    }
+  }
+}
+
 private fun LazyListScope.wallpaperItems(
   state: AppState,
   carousel: Carousel,
@@ -443,7 +484,7 @@ private fun LazyListScope.wallpaperItems(
       val index = carousel.wallpaperIds.indexOf(wallpaperId)
       WallpaperRow(
         wallpaperName = wallpaper.displayName(),
-        imageFile = wallpaper.previewVariant()?.let { viewModel.imageFile(it.fileName) },
+        imageFile = wallpaper.thumbnailVariant()?.let { viewModel.imageFile(it.fileName) },
         position = index + 1,
         selected = wallpaperId in selectedIds,
         selectionMode = selectionMode,
@@ -1027,7 +1068,7 @@ private fun AddWallpapersDialog(
                       .clip(RoundedCornerShape(8.dp))
                       .background(MaterialTheme.colorScheme.surfaceVariant),
                   ) {
-                    val variant = wallpaper.previewVariant()
+                    val variant = wallpaper.thumbnailVariant()
                     val bitmap = rememberThumbnail(variant?.let { imageFile(it.fileName) }, 150)
                     if (bitmap != null) {
                       Image(
