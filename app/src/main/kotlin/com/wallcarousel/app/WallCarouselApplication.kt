@@ -3,8 +3,12 @@ package com.wallcarousel.app
 
 import android.app.Application
 import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
+import androidx.core.content.ContextCompat
 import com.wallcarousel.app.data.ImageStore
 import com.wallcarousel.app.data.model.ApplyTarget
 import com.wallcarousel.app.data.StateRepository
@@ -21,6 +25,23 @@ class WallCarouselApplication : Application() {
     private set
   private var lastOrientation = Configuration.ORIENTATION_UNDEFINED
 
+  // Writing FLAG_LOCK while the device is unlocked makes Samsung briefly show
+  // the keyguard. When unlocked we only refresh Home on rotation and finish the
+  // Lock refresh when the screen turns off, when the keyguard is not visible.
+  private val screenOffReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      if (intent.action != Intent.ACTION_SCREEN_OFF) return
+      val pending = goAsync()
+      container.appScope.launch {
+        try {
+          container.applier.reapplyCurrent(ApplyTarget.LOCK)
+        } finally {
+          pending.finish()
+        }
+      }
+    }
+  }
+
   override fun attachBaseContext(base: Context) {
     super.attachBaseContext(AppLanguage.wrap(base))
   }
@@ -29,6 +50,14 @@ class WallCarouselApplication : Application() {
     super.onCreate()
     lastOrientation = resources.configuration.orientation
     container = AppContainer(this)
+    ContextCompat.registerReceiver(
+      this,
+      screenOffReceiver,
+      IntentFilter(Intent.ACTION_SCREEN_OFF),
+      // SCREEN_OFF is sent by the system, a different uid: NOT_EXPORTED would
+      // drop it. The broadcast is protected, so no app can spoof it.
+      ContextCompat.RECEIVER_EXPORTED,
+    )
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
@@ -36,11 +65,14 @@ class WallCarouselApplication : Application() {
     if (lastOrientation != newConfig.orientation) {
       lastOrientation = newConfig.orientation
       val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
-      val first = if (locked) ApplyTarget.LOCK else ApplyTarget.HOME
-      val second = if (locked) ApplyTarget.HOME else ApplyTarget.LOCK
       container.appScope.launch {
-        container.applier.reapplyCurrent(first)
-        container.applier.reapplyCurrent(second)
+        if (locked) {
+          container.applier.reapplyCurrent(ApplyTarget.LOCK)
+          container.applier.reapplyCurrent(ApplyTarget.HOME)
+        } else {
+          // Do not touch the lock wallpaper while the device is unlocked.
+          container.applier.reapplyCurrent(ApplyTarget.HOME)
+        }
       }
     }
   }
@@ -65,7 +97,14 @@ class AppContainer(context: Context) {
     updater.cleanup()
     appScope.launch {
       repository.ensureLoaded()
-      applier.reapplyCurrent(ApplyTarget.BOTH)
+      val locked = appContext.getSystemService(KeyguardManager::class.java)
+        ?.isKeyguardLocked == true
+      if (locked) {
+        applier.reapplyCurrent(ApplyTarget.LOCK)
+        applier.reapplyCurrent(ApplyTarget.HOME)
+      } else {
+        applier.reapplyCurrent(ApplyTarget.HOME)
+      }
       applier.warmOrientationCache(ApplyTarget.BOTH)
     }
   }

@@ -105,6 +105,24 @@ Con keyguard "Scorri" (PIN rimosso per il debug) e Home su "A ogni sblocco":
    Carosello Home", visibilità e bande degli sfondi di prova riportate ai valori
    originali.
 
+## Anteprima reale e lock (1.14)
+
+1. Editor di uno sfondo orizzontale, tab Verticale: l'anteprima usa il
+   rapporto reale del display (1800×2880 = 5:8), non più 3:4. Con le bande
+   attive, l'immagine resta intera e le bande in alto/basso corrispondono a
+   quelle applicate; la foto originale non viene modificata.
+2. Con un carosello assegnato al Lock e dispositivo sbloccato, cinque rotazioni
+   rapide hanno prodotto solo scritture Home (`which=5` nei log di
+   `WallpaperManagerService`). L'id dello sfondo Lock è rimasto invariato:
+   nessun flash della lock screen.
+3. Spegnimento dello schermo con lock carosello attivo: il receiver
+   `ACTION_SCREEN_OFF` ha aggiornato il Lock alla variante verticale (id 484,
+   crop 1800×2880). Riaccensione senza crash.
+4. Avvio a freddo dell'app da sbloccata: id del Lock invariato, quindi l'avvio
+   non riscrive il lock mentre è sbloccato.
+5. Assegnazione Lock riportata a "disattivata" dopo il test; auto-rotazione
+   ripristinata.
+
 ## Da eseguire
 
 - Samsung DeX: richiede l'attivazione manuale dal tablet (pannello rapido o

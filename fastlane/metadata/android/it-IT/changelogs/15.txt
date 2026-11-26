@@ -1,0 +1,2 @@
+- L'anteprima dell'editor usa il rapporto reale del dispositivo, quindi le bande sfocate corrispondono allo sfondo applicato.
+- La rotazione non tocca più lo sfondo del lock mentre il dispositivo è sbloccato, evitando il breve flash della lock screen. Il lock viene aggiornato quando lo schermo si spegne.

@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -95,6 +96,7 @@ import com.wallcarousel.app.data.model.Variant
 import com.wallcarousel.app.data.model.Wallpaper
 import com.wallcarousel.app.ui.AppViewModel
 import com.wallcarousel.app.ui.components.ConfirmDialog
+import com.wallcarousel.app.wallpaper.ScreenGeometry
 import com.wallcarousel.app.wallpaper.ThumbnailLoader
 import com.wallcarousel.app.wallpaper.WallpaperRenderer
 import java.io.File
@@ -132,6 +134,10 @@ fun WallpaperEditorScreen(
     mutableStateOf(natural.name)
   }
   val orientation = Orientation.entries.firstOrNull { it.name == orientationName } ?: Orientation.PORTRAIT
+  val context = LocalContext.current
+  val aspect = remember(context, orientation) {
+    ScreenGeometry.aspectRatio(context, orientation)
+  }
   val stored = wallpaper.variant(orientation)
   var draft by rememberSaveable(wallpaper.id, orientation) { mutableStateOf(stored) }
   LaunchedEffect(stored) {
@@ -286,7 +292,6 @@ fun WallpaperEditorScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
       val wide = maxWidth >= 840.dp
-      val aspect = if (orientation == Orientation.PORTRAIT) 3f / 4f else 16f / 10f
       val previewFile = draft?.let { viewModel.imageFile(it.fileName) }
 
       if (wide) {
@@ -724,7 +729,8 @@ private fun WallpaperPreview(
 ) {
   BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.TopCenter) {
     val maxPreviewWidth = if (aspectRatio < 1f) 380.dp else maxWidth
-    val previewWidth = minOf(maxWidth, maxPreviewWidth)
+    val previewWidth = minOf(maxWidth, maxPreviewWidth, maxHeight * aspectRatio)
+      .coerceAtLeast(1.dp)
     val density = LocalDensity.current
     val widthPx = with(density) { previewWidth.roundToPx() }.coerceAtLeast(1)
     val previewDescription = stringResource(R.string.wallpaper_preview)

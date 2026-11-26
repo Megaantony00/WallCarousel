@@ -41,6 +41,7 @@ in `fdroid/` for a future submission; the app is currently distributed on GitHub
 - Import photos from the system gallery. No storage permission is requested.
 - Keep separate portrait and landscape versions of the same wallpaper, and choose whether each wallpaper is visible in portrait, landscape or both.
 - Non-destructive editing: focal point, zoom, brightness, contrast, saturation, blur and blurred bands (dark or light) that keep the whole image visible. Library cards show the rendered result, not the untouched photo.
+- The editor preview uses the physical display aspect ratio, so blurred bands match the wallpaper that is actually applied.
 - Create ordered carousels and assign them to the home screen, the lock screen, or both.
 - Combine, independently for each screen, an interval (15 minutes or more), specific times of day
   and an advance on every unlock.
@@ -67,6 +68,10 @@ in `fdroid/` for a future submission; the app is currently distributed on GitHub
   through `setBitmap` takes about 2.5-3 s per target and remains available as a compatibility
   option. If the process was killed, the re-apply happens when the app is opened. A lock screen
   that is already visible may keep the old bitmap until the screen is turned off and on.
+- While the device is unlocked, a rotation updates only the Home wallpaper. The Lock wallpaper is
+  refreshed when the screen turns off (or when rotating with the lock screen visible), so Samsung
+  does not flash the keyguard during normal rotations. If the app process was killed before
+  screen-off, the Lock refresh waits for the next app start.
 - Samsung's system-wide Color palette is manual and does not reliably follow wallpaper changes;
   there is no public API for a third-party app to set it. The in-app "Wallpaper palette" only
   themes WallCarousel.

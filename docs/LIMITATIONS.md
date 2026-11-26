@@ -25,9 +25,12 @@ To avoid showing the old crop after a rotation, the app keeps prepared images in
   Home/Lock × portrait/landscape. They are memory-only and are lost when the process dies.
   Depending on image detail they are roughly 0.2–3 MB each, so four entries stay far below the
   ~80 MB of the old ARGB bitmap cache.
-- `Application.onConfigurationChanged` calls `reapplyCurrent()` for the target that is visible
-  first (Lock when the keyguard is showing, Home otherwise), then for the other target. It uses
-  the cached JPEG for `setStream` when the key matches.
+- `Application.onConfigurationChanged` re-applies the visible target first. When the device is
+  unlocked it touches only Home; when the keyguard is showing it refreshes Lock and then Home.
+  A dynamic `ACTION_SCREEN_OFF` receiver finishes the Lock refresh while the screen is off, so
+  Samsung does not flash the keyguard during normal rotations.
+- The editor preview asks the display for its real size and uses the same aspect ratio that
+  `WallpaperManager` will crop, so blurred bands match the applied wallpaper.
 - `warmOrientationCache()` runs on app start and prepares the exact image the next rotation will
   use, including the fallback image when the other view has no visible wallpaper.
 - `preRenderOtherOrientation()` prepares the opposite orientation after every apply or reapply, so
